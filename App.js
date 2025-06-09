@@ -18,6 +18,8 @@ import EpisodeDetailScreen from './src/screens/EpisodeDetailScreen';
 import StreamsScreen from './src/screens/StreamsScreen';
 import SearchScreen from './src/screens/SearchScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
+import PeopleScreen from './src/screens/PeopleScreen';
+import PersonDetailScreen from './src/screens/PersonDetailScreen';
 
 // Import components
 import NetworkStatusBar from './src/components/NetworkStatusBar';
@@ -99,6 +101,27 @@ const StreamsStack = () => (
   </Stack.Navigator>
 );
 
+// People stack for the people tab
+const PeopleStack = () => (
+  <Stack.Navigator>
+    <Stack.Screen
+      name="PeopleList"
+      component={PeopleScreen}
+      options={{ 
+        title: 'People',
+        headerLeft: () => <AppIcon size={30} showText={false} style={{ marginLeft: 10 }} />
+      }}
+    />
+    <Stack.Screen
+      name="PersonDetail"
+      component={PersonDetailScreen}
+      options={({ route }) => ({
+        title: route.params?.name || 'Person Detail',
+      })}
+    />
+  </Stack.Navigator>
+);
+
 const SearchStack = () => (
   <Stack.Navigator>
     <Stack.Screen 
@@ -170,6 +193,8 @@ const TabNavigator = () => {
             iconName = focused ? 'tv' : 'tv-outline';
           } else if (route.name === 'Streams') {
             iconName = focused ? 'radio' : 'radio-outline';
+          } else if (route.name === 'People') {
+            iconName = focused ? 'people' : 'people-outline';
           } else if (route.name === 'Search') {
             iconName = focused ? 'search' : 'search-outline';
           } else if (route.name === 'Settings') {
@@ -190,6 +215,11 @@ const TabNavigator = () => {
       <Tab.Screen 
         name="Streams" 
         component={StreamsStack} 
+        options={{ headerShown: false }}
+      />
+      <Tab.Screen 
+        name="People" 
+        component={PeopleStack} 
         options={{ headerShown: false }}
       />
       <Tab.Screen 

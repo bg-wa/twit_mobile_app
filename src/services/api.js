@@ -187,7 +187,15 @@ const apiService = {
       
       if (online) {
         const response = await api.get('/people', { params });
-        return response.data.people || [];
+        
+        // Debug the response structure
+        console.log('People API response structure:', Object.keys(response.data));
+        
+        // The API returns an object with a 'people' property that contains the array
+        if (response.data && Array.isArray(response.data.people)) {
+          return response.data.people;
+        }
+        return [];
       } else {
         // People data is less critical, so we don't cache it by default
         throw new Error('Cannot fetch people while offline');
