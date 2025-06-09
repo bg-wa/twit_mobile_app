@@ -14,6 +14,7 @@
     "@expo/vector-icons": "^14.1.0",
     "@react-native-async-storage/async-storage": "^2.1.2",
     "@react-native-community/netinfo": "^11.4.1",
+    "@react-native-community/slider": "^4.5.7",
     "@react-navigation/bottom-tabs": "^7.3.14",
     "@react-navigation/elements": "^2.3.8",
     "@react-navigation/native": "^7.1.10",
@@ -28,6 +29,7 @@
     "expo-image": "~2.2.0",
     "expo-linking": "~7.1.5",
     "expo-router": "~5.0.7",
+    "expo-screen-orientation": "^8.1.7",
     "expo-splash-screen": "~0.30.9",
     "expo-status-bar": "~2.2.3",
     "expo-symbols": "~0.4.5",
@@ -42,7 +44,8 @@
     "react-native-screens": "~4.11.1",
     "react-native-vector-icons": "^10.2.0",
     "react-native-web": "~0.20.0",
-    "react-native-webview": "13.13.5"
+    "react-native-webview": "13.13.5",
+    "expo-file-system": "~18.1.10"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
