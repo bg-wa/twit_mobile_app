@@ -119,6 +119,11 @@ const PeopleStack = () => (
         title: route.params?.name || 'Person Detail',
       })}
     />
+    <Stack.Screen 
+      name="EpisodeDetail" 
+      component={EpisodeDetailScreen} 
+      options={({ route }) => ({ title: route.params?.title || 'Episode Details' })} 
+    />
   </Stack.Navigator>
 );
 

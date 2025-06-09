@@ -114,6 +114,32 @@ const apiService = {
     }
   },
   
+  getEpisodesByPersonId: async (personId, params = {}) => {
+    try {
+      const online = await cacheManager.isOnline();
+      
+      if (online) {
+        // Set the credits_people parameter to the person's ID
+        const queryParams = {
+          ...params,
+          credits_people: personId,
+          // Limit to a reasonable number of episodes
+          range: params.range || 10
+        };
+        
+        const response = await api.get('/episodes', { params: queryParams });
+        console.log(`Fetched ${response.data.episodes?.length || 0} episodes for person ${personId}`);
+        return response.data.episodes || [];
+      } else {
+        // We could implement caching for person's episodes here if needed
+        throw new Error('Cannot fetch person episodes while offline');
+      }
+    } catch (error) {
+      console.error(`Error fetching episodes for person ${personId}:`, error);
+      throw error;
+    }
+  },
+  
   getEpisodeById: async (id) => {
     try {
       const cacheKey = `${cacheManager.CACHE_KEYS.EPISODE_DETAIL}${id}`;
