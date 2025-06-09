@@ -70,7 +70,8 @@ const HomeScreen = ({ navigation }) => {
         style={styles.showCard}
         onPress={() => navigation.navigate('ShowDetail', { 
           id: item.id, 
-          title: item.label || 'Show Details'
+          title: item.label || 'Show Details',
+          showData: item
         })}
       >
         <View style={styles.imageContainer}>

@@ -72,8 +72,10 @@ const apiService = {
       
       if (online) {
         const response = await api.get(`/shows/${id}`);
-        await cacheManager.saveToCache(cacheKey, response.data);
-        return response.data;
+        // Extract just the show object from response.data.shows
+        const showData = response.data.shows || {};
+        await cacheManager.saveToCache(cacheKey, showData);
+        return showData;
       } else {
         const cachedShow = await cacheManager.getFromCache(cacheKey);
         if (cachedShow) {

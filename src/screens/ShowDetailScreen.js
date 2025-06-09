@@ -37,6 +37,17 @@ const extractImageUrl = (show) => {
 };
 
 const extractEpisodeImageUrl = (episode) => {
+  // Check for heroImage first (preferred for episodes)
+  if (episode.heroImage) {
+    // If heroImage is an object with derivatives, use the appropriate size
+    if (episode.heroImage.derivatives && episode.heroImage.derivatives.twit_album_art_300x300) {
+      return episode.heroImage.derivatives.twit_album_art_300x300;
+    } else if (episode.heroImage.url) {
+      return episode.heroImage.url;
+    }
+  }
+
+  // Fall back to coverArt if heroImage isn't available
   if (episode.coverArt) {
     // If coverArt is an object with derivatives, use the appropriate size
     if (episode.coverArt.derivatives && episode.coverArt.derivatives.twit_album_art_300x300) {
@@ -55,8 +66,8 @@ const extractEpisodeImageUrl = (episode) => {
 };
 
 const ShowDetailScreen = ({ route, navigation }) => {
-  const { id } = route.params;
-  const [show, setShow] = useState(null);
+  const { id, showData: initialShowData } = route.params;
+  const [show, setShow] = useState(initialShowData || null);
   const [episodes, setEpisodes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -68,24 +79,55 @@ const ShowDetailScreen = ({ route, navigation }) => {
         setError(null);
         
         // Fetch show details
+        console.log('Fetching show with ID:', id);
         const showData = await apiService.getShowById(id);
-        setShow(showData);
+        console.log('Show data received:', JSON.stringify(showData));
+        
+        // Only update if we got valid show data 
+        if (showData && Object.keys(showData).length > 0) {
+          setShow(showData);
+        } else if (!initialShowData) {
+          setError('Could not load show details. Invalid data received.');
+        }
         
         // Fetch episodes for this show
         const episodesData = await apiService.getEpisodes({ 'filter[shows]': id });
+        console.log('Episodes count:', episodesData.length);
+        
+        // Log first episode data for debugging
+        if (episodesData.length > 0) {
+          console.log('First episode data sample:', JSON.stringify({
+            id: episodesData[0].id,
+            title: episodesData[0].label,
+            hasHeroImage: !!episodesData[0].heroImage,
+            hasCoverArt: !!episodesData[0].coverArt,
+            heroImageUrl: episodesData[0].heroImage ? 
+              (episodesData[0].heroImage.derivatives ? 
+                episodesData[0].heroImage.derivatives.twit_album_art_300x300 : 
+                episodesData[0].heroImage.url) : null
+          }));
+        }
+        
         setEpisodes(episodesData);
       } catch (err) {
-        setError('Failed to load show details.');
         console.error('Error fetching show details:', err);
+        if (!initialShowData) {
+          setError(`Failed to load show details: ${err.message}`);
+        }
       } finally {
         setLoading(false);
       }
     };
 
     fetchShowDetails();
-  }, [id]);
+  }, [id, initialShowData]);
 
   const renderEpisodeItem = ({ item }) => {
+    // Debug the image URL resolution for this episode
+    const imageUrl = extractEpisodeImageUrl(item);
+    console.log(`Episode ${item.id} (${item.label}) image source:`, 
+      imageUrl ? `Using URL: ${imageUrl}` : 'Using placeholder');
+    
     return (
       <TouchableOpacity
         style={styles.episodeItem}
@@ -96,9 +138,9 @@ const ShowDetailScreen = ({ route, navigation }) => {
         })}
       >
         <View style={styles.episodeImageContainer}>
-          {extractEpisodeImageUrl(item) ? (
+          {imageUrl ? (
             <Image
-              source={{ uri: extractEpisodeImageUrl(item) }}
+              source={{ uri: imageUrl }}
               style={styles.episodeImage}
               resizeMode="contain"
             />
