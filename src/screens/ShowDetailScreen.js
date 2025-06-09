@@ -152,14 +152,29 @@ const ShowDetailScreen = ({ route, navigation }) => {
         </View>
         <View style={styles.episodeInfo}>
           <Text style={styles.episodeTitle} numberOfLines={2}>{item.label || 'Untitled Episode'}</Text>
-          <Text style={styles.episodeDate}>
-            {item.airingDate ? new Date(item.airingDate).toLocaleDateString() : 'Unknown date'}
-          </Text>
-          {item.description && (
+          
+          <View style={styles.episodeMetaRow}>
+            {item.episodeNumber && (
+              <View style={styles.episodeNumberBadge}>
+                <Text style={styles.episodeNumberText}>
+                  {item.seasonNumber ? `S${item.seasonNumber}:E${item.episodeNumber}` : `EP ${item.episodeNumber}`}
+                </Text>
+              </View>
+            )}
+            <Text style={styles.episodeDate}>
+              {item.airingDate ? new Date(item.airingDate).toLocaleDateString() : 'Unknown date'}
+            </Text>
+          </View>
+          
+          {item.teaser ? (
+            <Text style={styles.episodeDescription} numberOfLines={2}>
+              {stripHtmlTags(item.teaser)}
+            </Text>
+          ) : item.description ? (
             <Text style={styles.episodeDescription} numberOfLines={2}>
               {stripHtmlTags(item.description)}
             </Text>
-          )}
+          ) : null}
         </View>
       </TouchableOpacity>
     );
@@ -390,10 +405,26 @@ const styles = StyleSheet.create({
     color: '#333333',
     marginBottom: 4,
   },
+  episodeMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  episodeNumberBadge: {
+    backgroundColor: '#ff0000',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 4,
+    marginRight: 8,
+  },
+  episodeNumberText: {
+    fontSize: 14,
+    color: '#ffffff',
+    fontWeight: 'bold',
+  },
   episodeDate: {
     fontSize: 14,
     color: '#999999',
-    marginBottom: 4,
   },
   episodeDescription: {
     fontSize: 14,

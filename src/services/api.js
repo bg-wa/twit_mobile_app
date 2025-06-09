@@ -121,8 +121,10 @@ const apiService = {
       
       if (online) {
         const response = await api.get(`/episodes/${id}`);
-        await cacheManager.saveToCache(cacheKey, response.data);
-        return response.data;
+        // Extract just the episode object from response.data.episodes
+        const episodeData = response.data.episodes || {};
+        await cacheManager.saveToCache(cacheKey, episodeData);
+        return episodeData;
       } else {
         const cachedEpisode = await cacheManager.getFromCache(cacheKey);
         if (cachedEpisode) {
