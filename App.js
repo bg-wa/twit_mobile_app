@@ -132,6 +132,14 @@ const SettingsStack = () => (
         headerLeft: () => <AppIcon size={30} showText={false} style={{ marginLeft: 10 }} />
       }} 
     />
+    <Stack.Screen 
+      name="DiagnosticScreen" 
+      component={DiagnosticScreen} 
+      options={{ 
+        title: 'Diagnostics',
+        headerTintColor: '#ff0000'
+      }} 
+    />
   </Stack.Navigator>
 );
 
@@ -166,8 +174,6 @@ const TabNavigator = () => {
             iconName = focused ? 'search' : 'search-outline';
           } else if (route.name === 'Settings') {
             iconName = focused ? 'settings' : 'settings-outline';
-          } else if (route.name === 'Diagnostics') {
-            iconName = focused ? 'bug' : 'bug-outline';
           }
 
           return <Ionicons name={iconName} size={size} color={color} />;
@@ -176,11 +182,6 @@ const TabNavigator = () => {
         tabBarInactiveTintColor: 'gray',
       })}
     >
-      <Tab.Screen 
-        name="Diagnostics" 
-        component={DiagnosticStack} 
-        options={{ headerShown: false }}
-      />
       <Tab.Screen 
         name="Shows" 
         component={ShowsStack} 

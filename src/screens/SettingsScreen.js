@@ -14,8 +14,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import apiService from '../services/api';
 import { colors, spacing, typography } from '../theme';
 import AppIcon from '../components/AppIcon';
+import { Ionicons } from '@expo/vector-icons';
 
-const SettingsScreen = () => {
+const SettingsScreen = ({ navigation }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [settings, setSettings] = useState({
     enableOfflineMode: true,
@@ -143,6 +144,17 @@ const SettingsScreen = () => {
         </View>
 
         <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Diagnostics</Text>
+          <TouchableOpacity 
+            style={[styles.button, styles.diagnosticButton]} 
+            onPress={() => navigation.navigate('DiagnosticScreen')}
+          >
+            <Ionicons name="bug" size={20} color="#ffffff" style={styles.buttonIcon} />
+            <Text style={styles.buttonText}>Open Diagnostics</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.section}>
           <Text style={styles.sectionTitle}>About</Text>
           <Text style={styles.aboutText}>
             TWiT Mobile App provides access to TWiT.tv shows, episodes, and live streams.
@@ -223,7 +235,15 @@ const styles = StyleSheet.create({
     padding: spacing.medium,
     borderRadius: 8,
     alignItems: 'center',
+    marginVertical: spacing.small,
+  },
+  diagnosticButton: {
+    flexDirection: 'row',
     justifyContent: 'center',
+    backgroundColor: '#2c3e50', // Different color to distinguish from cache button
+  },
+  buttonIcon: {
+    marginRight: spacing.small,
   },
   buttonText: {
     color: colors.text.inverse,
