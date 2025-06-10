@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Text, View, LogBox, ActivityIndicator, Platform } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import { registerRootComponent } from 'expo';
+import { COLORS } from './src/utils/theme';
 
 // Make Platform available globally to fix reference errors
 global.Platform = Platform;
@@ -50,10 +51,10 @@ class ErrorBoundary extends React.Component {
   render() {
     if (this.state.hasError) {
       return (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
-          <Text style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 10 }}>Something went wrong!</Text>
-          <Text style={{ marginBottom: 20 }}>{this.state.error?.toString() || 'Unknown error'}</Text>
-          <Text style={{ fontSize: 16 }}>Please restart the app</Text>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, backgroundColor: COLORS.BACKGROUND }}>
+          <Text style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 10, color: COLORS.TEXT_DARK }}>Something went wrong!</Text>
+          <Text style={{ marginBottom: 20, color: COLORS.ERROR }}>{this.state.error?.toString() || 'Unknown error'}</Text>
+          <Text style={{ fontSize: 16, color: COLORS.TEXT_MEDIUM }}>Please restart the app</Text>
         </View>
       );
     }
@@ -66,13 +67,23 @@ const Tab = createBottomTabNavigator();
 
 // Main stack navigator for each tab
 const ShowsStack = () => (
-  <Stack.Navigator>
+  <Stack.Navigator
+    screenOptions={{
+      headerStyle: {
+        backgroundColor: COLORS.PRIMARY,
+        height: 56, // Reduce the header height
+      },
+      headerTitleAlign: 'center', // Center the title
+      headerTintColor: COLORS.TEXT_LIGHT,
+      headerBackTitle: 'Back',
+    }}
+  >
     <Stack.Screen 
       name="ShowsList" 
       component={HomeScreen} 
       options={{ 
         title: 'TWiT Shows',
-        headerLeft: () => <AppIcon size={30} showText={false} style={{ marginLeft: 10 }} />
+        headerLeft: () => <AppIcon size={30} showText={false} style={{ marginLeft: 15, marginRight: 10 }} />
       }} 
     />
     <Stack.Screen 
@@ -89,13 +100,23 @@ const ShowsStack = () => (
 );
 
 const StreamsStack = () => (
-  <Stack.Navigator>
+  <Stack.Navigator
+    screenOptions={{
+      headerStyle: {
+        backgroundColor: COLORS.PRIMARY,
+        height: 56, // Reduce the header height
+      },
+      headerTitleAlign: 'center', // Center the title
+      headerTintColor: COLORS.TEXT_LIGHT,
+      headerBackTitle: 'Back',
+    }}
+  >
     <Stack.Screen 
       name="StreamsList" 
       component={StreamsScreen} 
       options={{ 
         title: 'Live Streams',
-        headerLeft: () => <AppIcon size={30} showText={false} style={{ marginLeft: 10 }} />
+        headerLeft: () => <AppIcon size={30} showText={false} style={{ marginLeft: 15, marginRight: 10 }} />
       }} 
     />
   </Stack.Navigator>
@@ -103,13 +124,23 @@ const StreamsStack = () => (
 
 // People stack for the people tab
 const PeopleStack = () => (
-  <Stack.Navigator>
+  <Stack.Navigator
+    screenOptions={{
+      headerStyle: {
+        backgroundColor: COLORS.PRIMARY,
+        height: 56, // Reduce the header height
+      },
+      headerTitleAlign: 'center', // Center the title
+      headerTintColor: COLORS.TEXT_LIGHT,
+      headerBackTitle: 'Back',
+    }}
+  >
     <Stack.Screen
       name="PeopleList"
       component={PeopleScreen}
       options={{ 
         title: 'People',
-        headerLeft: () => <AppIcon size={30} showText={false} style={{ marginLeft: 10 }} />
+        headerLeft: () => <AppIcon size={30} showText={false} style={{ marginLeft: 15, marginRight: 10 }} />
       }}
     />
     <Stack.Screen
@@ -128,13 +159,23 @@ const PeopleStack = () => (
 );
 
 const SearchStack = () => (
-  <Stack.Navigator>
+  <Stack.Navigator
+    screenOptions={{
+      headerStyle: {
+        backgroundColor: COLORS.PRIMARY,
+        height: 56, // Reduce the header height
+      },
+      headerTitleAlign: 'center', // Center the title
+      headerTintColor: COLORS.TEXT_LIGHT,
+      headerBackTitle: 'Back',
+    }}
+  >
     <Stack.Screen 
       name="SearchContent" 
       component={SearchScreen} 
       options={{ 
         title: 'Search',
-        headerLeft: () => <AppIcon size={30} showText={false} style={{ marginLeft: 10 }} />
+        headerLeft: () => <AppIcon size={30} showText={false} style={{ marginLeft: 15, marginRight: 10 }} />
       }} 
     />
     <Stack.Screen 
@@ -151,13 +192,23 @@ const SearchStack = () => (
 );
 
 const SettingsStack = () => (
-  <Stack.Navigator>
+  <Stack.Navigator
+    screenOptions={{
+      headerStyle: {
+        backgroundColor: COLORS.PRIMARY,
+        height: 56, // Reduce the header height
+      },
+      headerTitleAlign: 'center', // Center the title
+      headerTintColor: COLORS.TEXT_LIGHT,
+      headerBackTitle: 'Back',
+    }}
+  >
     <Stack.Screen 
       name="SettingsScreen" 
       component={SettingsScreen} 
       options={{ 
         title: 'Settings',
-        headerLeft: () => <AppIcon size={30} showText={false} style={{ marginLeft: 10 }} />
+        headerLeft: () => <AppIcon size={30} showText={false} style={{ marginLeft: 15, marginRight: 10 }} />
       }} 
     />
     <Stack.Screen 
@@ -173,13 +224,22 @@ const SettingsStack = () => (
 
 // Diagnostic stack for troubleshooting
 const DiagnosticStack = () => (
-  <Stack.Navigator>
+  <Stack.Navigator
+    screenOptions={{
+      headerStyle: {
+        backgroundColor: COLORS.PRIMARY,
+        height: 56, // Reduce the header height
+      },
+      headerTitleAlign: 'center', // Center the title
+      headerTintColor: COLORS.TEXT_LIGHT,
+    }}
+  >
     <Stack.Screen 
       name="DiagnosticScreen" 
       component={DiagnosticScreen} 
       options={{ 
         title: 'Diagnostics',
-        headerLeft: () => <AppIcon size={30} showText={false} style={{ marginLeft: 10 }} />
+        headerLeft: () => <AppIcon size={30} showText={false} style={{ marginLeft: 15, marginRight: 10 }} />
       }} 
     />
   </Stack.Navigator>
@@ -208,8 +268,18 @@ const TabNavigator = () => {
 
           return <Ionicons name={iconName} size={size} color={color} />;
         },
-        tabBarActiveTintColor: '#ff0000',
-        tabBarInactiveTintColor: 'gray',
+        tabBarActiveTintColor: COLORS.SECONDARY,
+        tabBarInactiveTintColor: COLORS.TAB_INACTIVE,
+        tabBarStyle: {
+          backgroundColor: COLORS.PRIMARY,
+          borderTopColor: COLORS.PRIMARY_LIGHT,
+        },
+        headerStyle: {
+          backgroundColor: COLORS.PRIMARY,
+          borderBottomColor: COLORS.PRIMARY_LIGHT,
+          borderBottomWidth: 1,
+        },
+        headerTintColor: COLORS.TEXT_LIGHT,
       })}
     >
       <Tab.Screen 
@@ -291,19 +361,19 @@ const App = () => {
 
   if (!appIsReady) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator size="large" color="#ff0000" />
-        <Text style={{ marginTop: 10 }}>Loading...</Text>
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.BACKGROUND }}>
+        <ActivityIndicator size="large" color={COLORS.CTA} />
+        <Text style={{ marginTop: 10, color: COLORS.TEXT_MEDIUM }}>Loading...</Text>
       </View>
     );
   }
 
   if (appError) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-        <Text style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 10 }}>App Error</Text>
-        <Text style={{ marginBottom: 20 }}>{appError.toString()}</Text>
-        <Text style={{ fontSize: 16 }}>Please restart the app</Text>
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20, backgroundColor: COLORS.BACKGROUND }}>
+        <Text style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 10, color: COLORS.TEXT_DARK }}>App Error</Text>
+        <Text style={{ marginBottom: 20, color: COLORS.ERROR }}>{appError.toString()}</Text>
+        <Text style={{ fontSize: 16, color: COLORS.TEXT_MEDIUM }}>Please restart the app</Text>
       </View>
     );
   }

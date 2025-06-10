@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import apiService from '../services/api';
+import { COLORS, SPACING, TYPOGRAPHY } from '../utils/theme';
 
 const PeopleScreen = ({ navigation }) => {
   const [people, setPeople] = useState([]);
@@ -74,10 +75,10 @@ const PeopleScreen = ({ navigation }) => {
     
     return (
       <TouchableOpacity 
-        style={styles.personCard}
+        style={styles.personItem}
         onPress={() => navigateToPersonDetail(item)}
       >
-        <View style={styles.imageContainer}>
+        <View style={styles.personImageContainer}>
           {imageUrl ? (
             <Image
               source={{ uri: imageUrl }}
@@ -85,8 +86,8 @@ const PeopleScreen = ({ navigation }) => {
               resizeMode="cover"
             />
           ) : (
-            <View style={styles.placeholderImage}>
-              <Text style={styles.placeholderText}>{getInitials(item.label)}</Text>
+            <View style={styles.personPlaceholder}>
+              <Text style={styles.personPlaceholderText}>{getInitials(item.label)}</Text>
             </View>
           )}
           {item.staff && (
@@ -110,46 +111,46 @@ const PeopleScreen = ({ navigation }) => {
       <TouchableOpacity 
         style={[
           styles.filterButton, 
-          filterStaff === null && styles.activeFilter
+          filterStaff === null && styles.filterButtonActive
         ]}
         onPress={() => setFilterStaff(null)}
       >
         <Text style={[
-          styles.filterText,
-          filterStaff === null && styles.activeFilterText
+          styles.filterButtonText,
+          filterStaff === null && styles.filterButtonTextActive
         ]}>All</Text>
       </TouchableOpacity>
       <TouchableOpacity 
         style={[
           styles.filterButton, 
-          filterStaff === true && styles.activeFilter
+          filterStaff === true && styles.filterButtonActive
         ]}
         onPress={() => setFilterStaff(true)}
       >
         <Text style={[
-          styles.filterText,
-          filterStaff === true && styles.activeFilterText
+          styles.filterButtonText,
+          filterStaff === true && styles.filterButtonTextActive
         ]}>TWiT Staff</Text>
       </TouchableOpacity>
       <TouchableOpacity 
         style={[
           styles.filterButton, 
-          filterStaff === false && styles.activeFilter
+          filterStaff === false && styles.filterButtonActive
         ]}
         onPress={() => setFilterStaff(false)}
       >
         <Text style={[
-          styles.filterText,
-          filterStaff === false && styles.activeFilterText
+          styles.filterButtonText,
+          filterStaff === false && styles.filterButtonTextActive
         ]}>Guests</Text>
       </TouchableOpacity>
     </View>
   );
 
-  if (loading && !refreshing) {
+  if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#f03e3e" />
+        <ActivityIndicator size="large" color={COLORS.CTA} />
         <Text style={styles.loadingText}>Loading people...</Text>
       </View>
     );
@@ -175,12 +176,12 @@ const PeopleScreen = ({ navigation }) => {
         renderItem={renderPersonItem}
         keyExtractor={(item) => item.id.toString()}
         numColumns={2}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={styles.peopleGrid}
         refreshing={refreshing}
         onRefresh={handleRefresh}
         ListEmptyComponent={() => (
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No people found</Text>
+          <View style={styles.noResultsContainer}>
+            <Text style={styles.noResultsText}>No people found</Text>
           </View>
         )}
       />
@@ -191,135 +192,145 @@ const PeopleScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: COLORS.BACKGROUND,
+  },
+  filterContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: SPACING.MEDIUM,
+    paddingVertical: SPACING.SMALL,
+    backgroundColor: COLORS.CARD,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.BORDER,
+  },
+  filterButton: {
+    paddingVertical: SPACING.SMALL,
+    paddingHorizontal: SPACING.MEDIUM,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: COLORS.BORDER,
+  },
+  filterButtonActive: {
+    backgroundColor: COLORS.PRIMARY,
+    borderColor: COLORS.PRIMARY,
+  },
+  filterButtonText: {
+    fontSize: TYPOGRAPHY.FONT_SIZE.MEDIUM,
+    color: COLORS.TEXT_MEDIUM,
+  },
+  filterButtonTextActive: {
+    color: COLORS.TEXT_LIGHT,
+    fontWeight: '600',
+  },
+  peopleGrid: {
+    paddingHorizontal: SPACING.SMALL,
+    paddingTop: SPACING.SMALL,
+  },
+  personItem: {
+    backgroundColor: COLORS.CARD,
+    borderRadius: 8,
+    overflow: 'hidden',
+    margin: SPACING.SMALL,
+    width: '46%',
+    borderWidth: 1,
+    borderColor: COLORS.BORDER,
+    alignItems: 'center',
+  },
+  personImageContainer: {
+    width: '100%',
+    height: 120,
+  },
+  personImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  personPlaceholder: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: COLORS.PRIMARY_LIGHT,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  personPlaceholderText: {
+    fontSize: TYPOGRAPHY.FONT_SIZE.XX_LARGE,
+    color: COLORS.TEXT_LIGHT,
+    fontWeight: 'bold',
+  },
+  personInfo: {
+    padding: SPACING.MEDIUM,
+    alignItems: 'center',
+  },
+  personName: {
+    fontSize: TYPOGRAPHY.FONT_SIZE.MEDIUM,
+    fontWeight: '600',
+    color: COLORS.TEXT_DARK,
+    textAlign: 'center',
+    marginBottom: 2,
+  },
+  personRole: {
+    fontSize: TYPOGRAPHY.FONT_SIZE.SMALL,
+    color: COLORS.TEXT_MEDIUM,
+    textAlign: 'center',
+    marginBottom: SPACING.SMALL,
+  },
+  staffBadge: {
+    position: 'absolute',
+    bottom: 5,
+    right: 5,
+    backgroundColor: COLORS.CTA,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  staffText: {
+    fontSize: TYPOGRAPHY.FONT_SIZE.SMALL,
+    color: COLORS.TEXT_LIGHT,
+    fontWeight: '500',
+    marginLeft: 2,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f8f9fa',
-  },
-  loadingText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: '#343a40',
+    backgroundColor: COLORS.BACKGROUND,
   },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f8f9fa',
-    padding: 20,
+    backgroundColor: COLORS.BACKGROUND,
+    padding: SPACING.LARGE,
   },
   errorText: {
-    marginVertical: 10,
-    fontSize: 16,
-    color: '#343a40',
+    fontSize: TYPOGRAPHY.FONT_SIZE.MEDIUM,
+    color: COLORS.ERROR,
     textAlign: 'center',
+    marginBottom: SPACING.MEDIUM,
   },
   retryButton: {
-    backgroundColor: '#f03e3e',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    backgroundColor: COLORS.SECONDARY,
+    paddingHorizontal: SPACING.MEDIUM,
+    paddingVertical: SPACING.SMALL,
     borderRadius: 5,
-    marginTop: 10,
   },
   retryButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: 'bold',
+    color: COLORS.TEXT_LIGHT,
+    fontSize: TYPOGRAPHY.FONT_SIZE.MEDIUM,
+    fontWeight: '600',
   },
-  listContent: {
-    padding: 10,
-  },
-  personCard: {
+  noResultsContainer: {
     flex: 1,
-    margin: 6,
-    backgroundColor: 'white',
-    borderRadius: 8,
-    overflow: 'hidden',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    maxWidth: '48%',
-  },
-  imageContainer: {
-    aspectRatio: 1,
-    position: 'relative',
-  },
-  personImage: {
-    width: '100%',
-    height: '100%',
-  },
-  placeholderImage: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#e9ecef',
     justifyContent: 'center',
     alignItems: 'center',
+    padding: SPACING.LARGE,
   },
-  placeholderText: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#adb5bd',
-  },
-  staffBadge: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    backgroundColor: '#f03e3e',
-    borderRadius: 12,
-    padding: 4,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  personInfo: {
-    padding: 10,
-  },
-  personName: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#212529',
-    marginBottom: 4,
-  },
-  personRole: {
-    fontSize: 12,
-    color: '#6c757d',
-  },
-  emptyContainer: {
-    padding: 30,
-    alignItems: 'center',
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#6c757d',
-  },
-  filterContainer: {
-    flexDirection: 'row',
-    padding: 10,
-    backgroundColor: 'white',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e9ecef',
-  },
-  filterButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    marginHorizontal: 4,
-    borderRadius: 20,
-    backgroundColor: '#f1f3f5',
-  },
-  activeFilter: {
-    backgroundColor: '#f03e3e',
-  },
-  filterText: {
-    fontSize: 14,
-    color: '#495057',
-  },
-  activeFilterText: {
-    color: 'white',
-    fontWeight: 'bold',
+  noResultsText: {
+    fontSize: TYPOGRAPHY.FONT_SIZE.LARGE,
+    color: COLORS.TEXT_MEDIUM,
+    textAlign: 'center',
   },
 });
 

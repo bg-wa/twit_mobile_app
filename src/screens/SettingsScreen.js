@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import apiService from '../services/api';
-import { colors, spacing, typography } from '../theme';
+import { COLORS, SPACING, TYPOGRAPHY } from '../utils/theme';
 import AppIcon from '../components/AppIcon';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -71,7 +71,7 @@ const SettingsScreen = ({ navigation }) => {
       <Switch
         value={settings[key]}
         onValueChange={() => toggleSetting(key)}
-        trackColor={{ false: '#767577', true: colors.primary }}
+        trackColor={{ false: '#767577', true: COLORS.PRIMARY }}
         thumbColor="#f4f3f4"
       />
     </View>
@@ -136,7 +136,7 @@ const SettingsScreen = ({ navigation }) => {
             disabled={isLoading}
           >
             {isLoading ? (
-              <ActivityIndicator size="small" color="#ffffff" />
+              <ActivityIndicator size="small" color={COLORS.TEXT_LIGHT} />
             ) : (
               <Text style={styles.buttonText}>Clear Cache</Text>
             )}
@@ -150,7 +150,7 @@ const SettingsScreen = ({ navigation }) => {
             onPress={() => navigation.navigate('DiagnosticScreen')}
           >
             <Ionicons name="bug" size={20} color="#ffffff" style={styles.buttonIcon} />
-            <Text style={styles.buttonText}>Open Diagnostics</Text>
+            <Text style={styles.diagnosticButtonText}>Open Diagnostics</Text>
           </TouchableOpacity>
         </View>
 
@@ -172,25 +172,25 @@ const SettingsScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: COLORS.BACKGROUND,
   },
   scrollContent: {
-    padding: spacing.medium,
+    padding: SPACING.MEDIUM,
   },
   headerContainer: {
     alignItems: 'center',
-    marginVertical: spacing.large,
+    marginVertical: SPACING.LARGE,
   },
   versionText: {
-    marginTop: spacing.small,
-    color: colors.text.secondary,
-    fontSize: typography.fontSize.small,
+    marginTop: SPACING.SMALL,
+    color: COLORS.TEXT_MEDIUM,
+    fontSize: TYPOGRAPHY.FONT_SIZE.SMALL,
   },
   section: {
-    marginBottom: spacing.large,
-    backgroundColor: colors.card,
+    marginBottom: SPACING.LARGE,
+    backgroundColor: COLORS.CARD,
     borderRadius: 8,
-    padding: spacing.medium,
+    padding: SPACING.MEDIUM,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -204,61 +204,66 @@ const styles = StyleSheet.create({
     }),
   },
   sectionTitle: {
-    fontSize: typography.fontSize.medium,
+    fontSize: TYPOGRAPHY.FONT_SIZE.MEDIUM,
     fontWeight: 'bold',
-    color: colors.text.primary,
-    marginBottom: spacing.medium,
+    color: COLORS.TEXT_DARK,
+    marginBottom: SPACING.MEDIUM,
   },
   settingItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: spacing.small,
+    paddingVertical: SPACING.SMALL,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: COLORS.BORDER,
   },
   settingTextContainer: {
     flex: 1,
-    marginRight: spacing.medium,
+    marginRight: SPACING.MEDIUM,
   },
   settingTitle: {
-    fontSize: typography.fontSize.regular,
-    color: colors.text.primary,
+    fontSize: TYPOGRAPHY.FONT_SIZE.MEDIUM,
+    color: COLORS.TEXT_DARK,
     marginBottom: 4,
   },
   settingDescription: {
-    fontSize: typography.fontSize.small,
-    color: colors.text.secondary,
+    fontSize: TYPOGRAPHY.FONT_SIZE.SMALL,
+    color: COLORS.TEXT_MEDIUM,
   },
   button: {
-    backgroundColor: colors.primary,
-    padding: spacing.medium,
+    backgroundColor: COLORS.CTA,
+    padding: SPACING.MEDIUM,
     borderRadius: 8,
     alignItems: 'center',
-    marginVertical: spacing.small,
+    marginVertical: SPACING.SMALL,
   },
   diagnosticButton: {
     flexDirection: 'row',
     justifyContent: 'center',
-    backgroundColor: '#2c3e50', // Different color to distinguish from cache button
+    backgroundColor: COLORS.PRIMARY,
   },
   buttonIcon: {
-    marginRight: spacing.small,
+    marginRight: SPACING.SMALL,
   },
   buttonText: {
-    color: colors.text.inverse,
+    color: COLORS.TEXT_DARK,
     fontWeight: 'bold',
-    fontSize: typography.fontSize.medium,
+    fontSize: TYPOGRAPHY.FONT_SIZE.MEDIUM,
+  },
+  diagnosticButtonText: {
+    color: COLORS.TEXT_LIGHT,
+    fontWeight: 'bold',
+    fontSize: TYPOGRAPHY.FONT_SIZE.MEDIUM,
   },
   aboutText: {
-    fontSize: typography.fontSize.small,
-    color: colors.text.secondary,
+    fontSize: TYPOGRAPHY.FONT_SIZE.SMALL,
+    color: COLORS.TEXT_MEDIUM,
     lineHeight: 20,
-    marginBottom: spacing.medium,
+    marginBottom: SPACING.MEDIUM,
   },
   copyrightText: {
-    fontSize: typography.fontSize.tiny,
-    color: colors.text.light,
+    fontSize: TYPOGRAPHY.FONT_SIZE.SMALL,
+    color: COLORS.TEXT_MEDIUM,
     textAlign: 'center',
   },
 });

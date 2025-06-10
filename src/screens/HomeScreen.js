@@ -10,8 +10,10 @@ import {
   RefreshControl,
   StatusBar
 } from 'react-native';
+import { setStatusBarStyle } from 'expo-status-bar';
 import apiService from '../services/api';
 import { stripHtmlAndDecodeEntities } from '../utils/textUtils';
+import { COLORS, SPACING, TYPOGRAPHY } from '../utils/theme';
 
 // Legacy function for backward compatibility
 const stripHtmlTags = (html) => {
@@ -114,7 +116,7 @@ const HomeScreen = ({ navigation }) => {
   if (loading && !refreshing) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#ff0000" />
+        <ActivityIndicator size="large" color={COLORS.CTA} />
         <Text style={styles.loadingText}>Loading shows...</Text>
       </View>
     );
@@ -154,36 +156,40 @@ const HomeScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: COLORS.BACKGROUND,
   },
   showsList: {
-    padding: 10,
+    paddingHorizontal: SPACING.MEDIUM,
+    paddingTop: SPACING.SMALL,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#ffffff',
+    paddingHorizontal: SPACING.SMALL,
+    paddingVertical: SPACING.SMALL,
+    marginBottom: SPACING.SMALL,
+    backgroundColor: COLORS.CARD,
+    borderRadius: 8,
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#333333',
+    color: COLORS.TEXT_DARK,
   },
   streamsButton: {
-    backgroundColor: '#ff0000',
+    backgroundColor: COLORS.SECONDARY,
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 8,
   },
   streamsButtonText: {
-    color: '#ffffff',
+    color: COLORS.TEXT_LIGHT,
     fontWeight: 'bold',
   },
   showCard: {
     marginBottom: 15,
-    backgroundColor: '#ffffff',
+    backgroundColor: COLORS.CARD,
     borderRadius: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
@@ -203,69 +209,73 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     resizeMode: 'contain',
-    backgroundColor: '#f0f0f0',
+    backgroundColor: COLORS.BORDER,
   },
   placeholderImage: {
     width: '100%',
     height: '100%',
-    backgroundColor: '#e0e0e0',
+    backgroundColor: COLORS.BORDER,
     justifyContent: 'center',
     alignItems: 'center',
   },
   placeholderText: {
     fontSize: 40,
     fontWeight: 'bold',
-    color: '#999',
+    color: COLORS.TEXT_MEDIUM,
   },
   showInfo: {
     padding: 12,
   },
   showTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 4,
+    fontSize: TYPOGRAPHY.FONT_SIZE.LARGE,
+    fontWeight: '600',
+    color: COLORS.TEXT_DARK,
+    marginBottom: SPACING.SMALL / 2,
   },
   showDescription: {
-    fontSize: 14,
-    color: '#666',
+    fontSize: TYPOGRAPHY.FONT_SIZE.SMALL,
+    color: COLORS.TEXT_MEDIUM,
+    marginBottom: SPACING.SMALL,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: COLORS.BACKGROUND,
   },
   loadingText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: '#666666',
+    marginTop: SPACING.SMALL,
+    fontSize: TYPOGRAPHY.FONT_SIZE.MEDIUM,
+    color: COLORS.TEXT_MEDIUM,
   },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f5f5f5',
-    padding: 20,
+    backgroundColor: COLORS.BACKGROUND,
+    padding: SPACING.LARGE,
   },
   errorText: {
-    fontSize: 16,
-    color: '#ff0000',
-    textAlign: 'center',
-    marginBottom: 16,
+    fontSize: TYPOGRAPHY.FONT_SIZE.LARGE,
+    fontWeight: 'bold',
+    color: COLORS.ERROR,
+    marginBottom: SPACING.SMALL,
   },
   retryButton: {
-    backgroundColor: '#ff0000',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 8,
+    backgroundColor: COLORS.SECONDARY,
+    paddingHorizontal: SPACING.MEDIUM,
+    paddingVertical: SPACING.SMALL,
+    borderRadius: 5,
   },
   retryButtonText: {
-    color: '#ffffff',
-    fontWeight: 'bold',
+    color: COLORS.TEXT_LIGHT,
+    fontSize: TYPOGRAPHY.FONT_SIZE.MEDIUM,
+    fontWeight: '600',
   },
   emptyText: {
     textAlign: 'center',
-    fontSize: 16,
-    color: '#666666',
+    fontSize: TYPOGRAPHY.FONT_SIZE.MEDIUM,
+    color: COLORS.TEXT_MEDIUM,
     marginTop: 40,
   },
 });

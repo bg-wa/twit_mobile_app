@@ -7,6 +7,7 @@ import {
   Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { COLORS } from '../utils/theme';
 
 /**
  * A reusable search bar component
@@ -88,7 +89,7 @@ const styles = StyleSheet.create({
     padding: 5,
   },
   searchButton: {
-    backgroundColor: '#ff0000',
+    backgroundColor: COLORS.CTA,
     width: 40,
     height: 40,
     borderRadius: 8,

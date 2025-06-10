@@ -15,6 +15,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import apiService from '../services/api';
 import { stripHtmlAndDecodeEntities } from '../utils/textUtils';
+import { COLORS, SPACING, TYPOGRAPHY } from '../utils/theme';
 
 // Legacy function for backward compatibility
 const stripHtmlTags = (html) => {
@@ -246,7 +247,7 @@ const PersonDetailScreen = ({ route, navigation }) => {
           <View style={styles.episodesContainer}>
             {episodesLoading ? (
               <View style={styles.episodesLoadingContainer}>
-                <ActivityIndicator size="small" color="#f03e3e" />
+                <ActivityIndicator size="small" color={COLORS.CTA} />
                 <Text style={styles.episodesLoadingText}>Loading episodes...</Text>
               </View>
             ) : episodesError ? (
@@ -279,7 +280,7 @@ const PersonDetailScreen = ({ route, navigation }) => {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#f03e3e" />
+        <ActivityIndicator size="large" color={COLORS.CTA} />
         <Text style={styles.loadingText}>Loading person details...</Text>
       </View>
     );
@@ -394,287 +395,245 @@ const PersonDetailScreen = ({ route, navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: COLORS.BACKGROUND,
   },
   contentContainer: {
-    padding: 16,
+    padding: SPACING.MEDIUM,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f8f9fa',
+    backgroundColor: COLORS.BACKGROUND,
   },
   loadingText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: '#343a40',
+    marginTop: SPACING.SMALL,
+    fontSize: TYPOGRAPHY.FONT_SIZE.MEDIUM,
+    color: COLORS.TEXT_MEDIUM,
   },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f8f9fa',
-    padding: 20,
+    backgroundColor: COLORS.BACKGROUND,
+    padding: SPACING.LARGE,
   },
   errorText: {
-    marginVertical: 10,
-    fontSize: 16,
-    color: '#343a40',
+    fontSize: TYPOGRAPHY.FONT_SIZE.LARGE,
+    color: COLORS.ERROR,
+    marginTop: SPACING.MEDIUM,
     textAlign: 'center',
   },
   retryButton: {
-    backgroundColor: '#f03e3e',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    marginTop: SPACING.LARGE,
+    paddingHorizontal: SPACING.MEDIUM,
+    paddingVertical: SPACING.SMALL,
+    backgroundColor: COLORS.SECONDARY,
     borderRadius: 5,
-    marginTop: 10,
   },
   retryButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: 'bold',
+    color: COLORS.TEXT_LIGHT,
+    fontSize: TYPOGRAPHY.FONT_SIZE.MEDIUM,
+    fontWeight: '600',
   },
   headerContainer: {
-    flexDirection: 'column',
-    alignItems: 'center',
-    backgroundColor: 'white',
-    borderRadius: 10,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
+    flexDirection: 'row',
+    marginBottom: SPACING.LARGE,
   },
   imageContainer: {
-    width: 150,
-    height: 150,
-    borderRadius: 75,
-    overflow: 'hidden',
-    marginBottom: 16,
-    borderWidth: 2,
-    borderColor: '#e9ecef',
+    marginRight: SPACING.MEDIUM,
   },
   personImage: {
-    width: '100%',
-    height: '100%',
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: COLORS.BORDER,
   },
   placeholderImage: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#e9ecef',
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: COLORS.PRIMARY_LIGHT,
     justifyContent: 'center',
     alignItems: 'center',
   },
   placeholderText: {
-    fontSize: 48,
+    fontSize: TYPOGRAPHY.FONT_SIZE.X_LARGE,
+    color: COLORS.TEXT_LIGHT,
     fontWeight: 'bold',
-    color: '#adb5bd',
   },
   headerInfo: {
-    alignItems: 'center',
+    flex: 1,
+    justifyContent: 'center',
   },
   personName: {
-    fontSize: 24,
+    fontSize: TYPOGRAPHY.FONT_SIZE.X_LARGE,
     fontWeight: 'bold',
-    color: '#212529',
-    textAlign: 'center',
-    marginBottom: 4,
+    color: COLORS.TEXT_DARK,
+    marginBottom: SPACING.SMALL / 2,
   },
   personRole: {
-    fontSize: 16,
-    color: '#6c757d',
-    textAlign: 'center',
-    marginBottom: 10,
+    fontSize: TYPOGRAPHY.FONT_SIZE.MEDIUM,
+    color: COLORS.TEXT_MEDIUM,
+    marginBottom: SPACING.SMALL,
   },
   staffBadge: {
     flexDirection: 'row',
-    backgroundColor: '#f03e3e',
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    borderRadius: 12,
     alignItems: 'center',
+    backgroundColor: COLORS.PRIMARY,
+    paddingHorizontal: SPACING.SMALL,
+    paddingVertical: SPACING.SMALL / 2,
+    borderRadius: 4,
+    alignSelf: 'flex-start',
   },
   staffIcon: {
     marginRight: 4,
   },
   staffText: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 12,
+    fontSize: TYPOGRAPHY.FONT_SIZE.SMALL,
+    color: COLORS.TEXT_LIGHT,
+    fontWeight: '500',
   },
   sectionContainer: {
-    backgroundColor: 'white',
-    borderRadius: 10,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
+    backgroundColor: COLORS.CARD,
+    borderRadius: 8,
+    marginBottom: SPACING.MEDIUM,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: COLORS.BORDER,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
-    borderBottomColor: '#e9ecef',
+    padding: SPACING.MEDIUM,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.BORDER,
   },
   sectionTitleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   sectionIcon: {
-    marginRight: 10,
+    marginRight: SPACING.SMALL,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#212529',
+    fontSize: TYPOGRAPHY.FONT_SIZE.LARGE,
+    fontWeight: '600',
+    color: COLORS.TEXT_DARK,
   },
   bioText: {
-    fontSize: 16,
-    color: '#495057',
-    lineHeight: 24,
-    padding: 16,
+    fontSize: TYPOGRAPHY.FONT_SIZE.MEDIUM,
+    color: COLORS.TEXT_MEDIUM,
+    lineHeight: 22,
+    padding: SPACING.MEDIUM,
+  },
+  episodesContainer: {
+    padding: SPACING.MEDIUM,
+  },
+  episodesList: {
+    paddingBottom: 0,
+  },
+  episodesLoadingContainer: {
+    padding: SPACING.MEDIUM,
+    alignItems: 'center',
+  },
+  episodesLoadingText: {
+    marginTop: SPACING.SMALL,
+    color: COLORS.TEXT_MEDIUM,
+  },
+  episodesErrorContainer: {
+    padding: SPACING.MEDIUM,
+    alignItems: 'center',
+  },
+  episodesErrorText: {
+    color: COLORS.ERROR,
+    marginBottom: SPACING.MEDIUM,
+  },
+  episodesRetryButton: {
+    paddingHorizontal: SPACING.SMALL,
+    paddingVertical: SPACING.SMALL / 2,
+    backgroundColor: COLORS.SECONDARY,
+    borderRadius: 5,
+  },
+  episodesRetryText: {
+    color: COLORS.TEXT_LIGHT,
+  },
+  noEpisodesText: {
+    color: COLORS.TEXT_MEDIUM,
+    textAlign: 'center',
+    padding: SPACING.MEDIUM,
+  },
+  episodeItem: {
+    flexDirection: 'row',
+    padding: SPACING.MEDIUM,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.BORDER,
+  },
+  episodeImageContainer: {
+    marginRight: SPACING.MEDIUM,
+  },
+  episodeImage: {
+    width: 80,
+    height: 45,
+    borderRadius: 4,
+    backgroundColor: COLORS.BORDER,
+  },
+  episodeContent: {
+    flex: 1,
+  },
+  episodeTitle: {
+    fontSize: TYPOGRAPHY.FONT_SIZE.MEDIUM,
+    fontWeight: '600',
+    color: COLORS.TEXT_DARK,
+    marginBottom: 4,
+  },
+  episodeMeta: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: 4,
+  },
+  episodeNumber: {
+    fontSize: TYPOGRAPHY.FONT_SIZE.SMALL,
+    backgroundColor: COLORS.PRIMARY,
+    color: COLORS.TEXT_LIGHT,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    overflow: 'hidden',
+    marginRight: SPACING.SMALL,
+    marginBottom: 2,
+  },
+  episodeDate: {
+    fontSize: TYPOGRAPHY.FONT_SIZE.SMALL,
+    color: COLORS.TEXT_MEDIUM,
+    marginRight: SPACING.SMALL,
+    marginBottom: 2,
+  },
+  episodeShow: {
+    fontSize: TYPOGRAPHY.FONT_SIZE.SMALL,
+    color: COLORS.SECONDARY,
+    marginBottom: 2,
+  },
+  episodeDescription: {
+    fontSize: TYPOGRAPHY.FONT_SIZE.SMALL,
+    color: COLORS.TEXT_MEDIUM,
+    marginTop: 2,
   },
   linkButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 16,
+    padding: SPACING.MEDIUM,
     borderBottomWidth: 1,
-    borderBottomColor: '#e9ecef',
+    borderBottomColor: COLORS.BORDER,
   },
   linkText: {
-    fontSize: 16,
-    color: '#f03e3e',
-    marginLeft: 8,
-  },
-  episodesContainer: {
-    padding: 10,
-  },
-  episodesList: {
-    paddingBottom: 8,
-  },
-  episodeItem: {
-    flexDirection: 'row',
-    backgroundColor: '#f8f9fa',
-    borderRadius: 8,
-    marginVertical: 5,
-    padding: 10,
-    overflow: 'hidden',
-  },
-  episodeImageContainer: {
-    width: 70,
-    height: 70,
-    borderRadius: 5,
-    overflow: 'hidden',
-    marginRight: 12,
-  },
-  episodeImage: {
-    width: '100%',
-    height: '100%',
-  },
-  placeholderEpisodeImage: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#e9ecef',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  placeholderEpisodeText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#adb5bd',
-  },
-  episodeInfo: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  episodeTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#212529',
-    marginBottom: 5,
-  },
-  episodeMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    marginBottom: 5,
-  },
-  episodeNumberBadge: {
-    backgroundColor: '#f03e3e',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4,
-    marginRight: 8,
-  },
-  episodeNumberText: {
-    color: 'white',
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  episodeDate: {
-    fontSize: 12,
-    color: '#6c757d',
-    marginRight: 8,
-  },
-  episodeShow: {
-    fontSize: 12,
-    color: '#f03e3e',
-    fontWeight: '500',
-  },
-  episodeDescription: {
-    fontSize: 14,
-    color: '#495057',
-    lineHeight: 20,
-  },
-  episodeChevronContainer: {
-    justifyContent: 'center',
-    paddingLeft: 5,
-  },
-  episodesLoadingContainer: {
-    padding: 20,
-    alignItems: 'center',
-  },
-  episodesLoadingText: {
-    marginTop: 8,
-    color: '#6c757d',
-    fontSize: 14,
-  },
-  episodesErrorContainer: {
-    padding: 20,
-    alignItems: 'center',
-  },
-  episodesErrorText: {
-    color: '#6c757d',
-    fontSize: 14,
-    textAlign: 'center',
-    marginBottom: 10,
-  },
-  episodesRetryButton: {
-    backgroundColor: '#f03e3e',
-    paddingHorizontal: 15,
-    paddingVertical: 6,
-    borderRadius: 4,
-  },
-  episodesRetryText: {
-    color: 'white',
-    fontWeight: '500',
-  },
-  noEpisodesText: {
-    fontSize: 14,
-    color: '#6c757d',
-    textAlign: 'center',
-    padding: 20,
+    fontSize: TYPOGRAPHY.FONT_SIZE.MEDIUM,
+    color: COLORS.SECONDARY,
+    marginLeft: SPACING.SMALL,
   },
   linksContainer: {
-    paddingTop: 10,
+    paddingTop: SPACING.SMALL,
   },
 });
 

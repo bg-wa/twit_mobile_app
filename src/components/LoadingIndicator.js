@@ -5,6 +5,7 @@ import {
   StyleSheet, 
   ActivityIndicator 
 } from 'react-native';
+import { COLORS } from '../utils/theme';
 
 /**
  * A reusable loading indicator component
@@ -12,7 +13,7 @@ import {
 const LoadingIndicator = ({ message = 'Loading...' }) => {
   return (
     <View style={styles.container}>
-      <ActivityIndicator size="large" color="#ff0000" />
+      <ActivityIndicator size="large" color={COLORS.CTA} />
       <Text style={styles.text}>{message}</Text>
     </View>
   );

@@ -10,6 +10,8 @@ import {
   Image
 } from 'react-native';
 import apiService from '../services/api';
+import { COLORS, SPACING, TYPOGRAPHY } from '../utils/theme';
+import { stripHtmlAndDecodeEntities } from '../utils/textUtils';
 
 const StreamsScreen = () => {
   const [streams, setStreams] = useState([]);
@@ -17,22 +19,28 @@ const StreamsScreen = () => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchStreams = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const data = await apiService.getStreams();
-        setStreams(data);
-      } catch (err) {
-        setError('Failed to load streams.');
-        console.error('Error fetching streams:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchStreams();
   }, []);
+
+  const fetchStreams = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const streamsData = await apiService.getStreams();
+      if (streamsData && Array.isArray(streamsData)) {
+        // Reverse the order of streams to display the newest first
+        setStreams([...streamsData].reverse());
+      } else {
+        setStreams([]);
+      }
+    } catch (err) {
+      setError('Failed to load streams. Please try again later.');
+      console.error('Error fetching streams:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleOpenStream = (url) => {
     if (url) {
@@ -55,7 +63,7 @@ const StreamsScreen = () => {
         <Text style={styles.streamTitle}>{item.label || 'Unknown Stream'}</Text>
         {item.description && (
           <Text style={styles.streamDescription} numberOfLines={2}>
-            {item.description}
+            {stripHtmlAndDecodeEntities(item.description)}
           </Text>
         )}
         <View style={styles.streamTypeContainer}>
@@ -81,7 +89,7 @@ const StreamsScreen = () => {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#ff0000" />
+        <ActivityIndicator size="large" color={COLORS.CTA} />
         <Text style={styles.loadingText}>Loading streams...</Text>
       </View>
     );
@@ -123,21 +131,21 @@ const StreamsScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: COLORS.BACKGROUND,
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: TYPOGRAPHY.FONT_SIZE.XX_LARGE,
     fontWeight: 'bold',
-    color: '#333333',
-    padding: 16,
+    color: COLORS.TEXT_DARK,
+    padding: SPACING.MEDIUM,
   },
   listContent: {
-    padding: 16,
+    padding: SPACING.MEDIUM,
   },
   streamCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: COLORS.CARD,
     borderRadius: 8,
-    marginBottom: 16,
+    marginBottom: SPACING.MEDIUM,
     overflow: 'hidden',
     elevation: 2,
     shadowColor: '#000',
@@ -150,81 +158,81 @@ const styles = StyleSheet.create({
     height: 180,
   },
   streamInfo: {
-    padding: 16,
+    padding: SPACING.MEDIUM,
   },
   streamTitle: {
-    fontSize: 18,
+    fontSize: TYPOGRAPHY.FONT_SIZE.X_LARGE,
     fontWeight: 'bold',
-    color: '#333333',
-    marginBottom: 8,
+    color: COLORS.TEXT_DARK,
+    marginBottom: SPACING.SMALL,
   },
   streamDescription: {
-    fontSize: 14,
-    color: '#666666',
-    marginBottom: 12,
+    fontSize: TYPOGRAPHY.FONT_SIZE.MEDIUM,
+    color: COLORS.TEXT_MEDIUM,
+    marginBottom: SPACING.SMALL,
   },
   streamTypeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: SPACING.MEDIUM,
   },
   streamType: {
-    fontSize: 14,
-    color: '#666666',
-    marginRight: 8,
+    fontSize: TYPOGRAPHY.FONT_SIZE.MEDIUM,
+    color: COLORS.TEXT_MEDIUM,
+    marginRight: SPACING.SMALL,
   },
   preferredBadge: {
-    backgroundColor: '#28a745',
-    color: '#ffffff',
-    fontSize: 12,
+    backgroundColor: COLORS.SUCCESS,
+    color: COLORS.TEXT_LIGHT,
+    fontSize: TYPOGRAPHY.FONT_SIZE.SMALL,
     paddingVertical: 2,
     paddingHorizontal: 8,
     borderRadius: 12,
   },
   watchButton: {
-    backgroundColor: '#ff0000',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
+    backgroundColor: COLORS.CTA,
+    paddingVertical: SPACING.SMALL + 4,
+    paddingHorizontal: SPACING.MEDIUM + 4,
     borderRadius: 8,
     alignItems: 'center',
   },
   watchButtonText: {
-    color: '#ffffff',
+    color: COLORS.TEXT_DARK,
     fontWeight: 'bold',
-    fontSize: 16,
+    fontSize: TYPOGRAPHY.FONT_SIZE.LARGE,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: COLORS.BACKGROUND,
   },
   loadingText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: '#666666',
+    marginTop: SPACING.SMALL + 4,
+    fontSize: TYPOGRAPHY.FONT_SIZE.LARGE,
+    color: COLORS.TEXT_MEDIUM,
   },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f5f5f5',
-    padding: 20,
+    backgroundColor: COLORS.BACKGROUND,
+    padding: SPACING.MEDIUM,
   },
   errorText: {
-    fontSize: 16,
-    color: '#ff0000',
+    fontSize: TYPOGRAPHY.FONT_SIZE.LARGE,
+    color: COLORS.ERROR,
     textAlign: 'center',
-    marginBottom: 16,
+    marginBottom: SPACING.MEDIUM,
   },
   retryButton: {
-    backgroundColor: '#ff0000',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
+    backgroundColor: COLORS.CTA,
+    paddingVertical: SPACING.SMALL + 2,
+    paddingHorizontal: SPACING.MEDIUM,
     borderRadius: 8,
   },
   retryButtonText: {
-    color: '#ffffff',
+    color: COLORS.TEXT_DARK,
     fontWeight: 'bold',
   },
   noStreamsContainer: {
@@ -233,8 +241,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   noStreamsText: {
-    fontSize: 16,
-    color: '#666666',
+    fontSize: TYPOGRAPHY.FONT_SIZE.LARGE,
+    color: COLORS.TEXT_MEDIUM,
   },
 });
 

@@ -22,6 +22,7 @@ import Slider from '@react-native-community/slider';
 import * as FileSystem from 'expo-file-system';
 import apiService from '../services/api';
 import { stripHtmlAndDecodeEntities } from '../utils/textUtils';
+import { COLORS, SPACING, TYPOGRAPHY } from '../utils/theme';
 
 const { width, height } = Dimensions.get('window');
 
@@ -607,7 +608,7 @@ const EpisodeDetailScreen = ({ route, navigation }) => {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#ff0000" />
+        <ActivityIndicator size="large" color={COLORS.CTA} />
         <Text style={styles.loadingText}>Loading episode details...</Text>
       </View>
     );
@@ -750,7 +751,7 @@ const EpisodeDetailScreen = ({ route, navigation }) => {
             </TouchableOpacity>
             {downloading && (
               <View style={styles.downloadProgressContainer}>
-                <ActivityIndicator size="small" color="#33A1FD" />
+                <ActivityIndicator size="small" color={COLORS.CTA} />
                 <Text style={styles.downloadProgressText}>
                   Downloading... {Math.floor(downloadProgress * 100)}%
                 </Text>
@@ -861,19 +862,231 @@ const EpisodeDetailScreen = ({ route, navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: COLORS.BACKGROUND,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.BACKGROUND,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.BACKGROUND,
+    padding: SPACING.LARGE,
+  },
+  loadingText: {
+    fontSize: TYPOGRAPHY.FONT_SIZE.MEDIUM,
+    color: COLORS.TEXT_MEDIUM,
+    marginTop: SPACING.SMALL,
+  },
+  errorText: {
+    fontSize: TYPOGRAPHY.FONT_SIZE.LARGE,
+    color: COLORS.ERROR,
+    textAlign: 'center',
+    marginBottom: SPACING.MEDIUM,
+  },
+  retryButton: {
+    backgroundColor: COLORS.SECONDARY,
+    paddingHorizontal: SPACING.MEDIUM,
+    paddingVertical: SPACING.SMALL,
+    borderRadius: 5,
+  },
+  retryButtonText: {
+    color: COLORS.TEXT_LIGHT,
+    fontSize: TYPOGRAPHY.FONT_SIZE.MEDIUM,
+    fontWeight: '600',
+  },
+  scrollContainer: {
+    flexGrow: 1,
+  },
+  headerImage: {
+    width: '100%',
+    height: 200,
+    backgroundColor: COLORS.PRIMARY_LIGHT,
+  },
+  infoContainer: {
+    padding: SPACING.MEDIUM,
+    backgroundColor: COLORS.CARD,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.BORDER,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: SPACING.SMALL,
+  },
+  title: {
+    fontSize: TYPOGRAPHY.FONT_SIZE.X_LARGE,
+    fontWeight: 'bold',
+    color: COLORS.TEXT_DARK,
+    flex: 1,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: SPACING.SMALL,
+  },
+  showName: {
+    fontSize: TYPOGRAPHY.FONT_SIZE.MEDIUM,
+    fontWeight: '500',
+    color: COLORS.SECONDARY,
+    marginRight: SPACING.SMALL,
+  },
+  episodeNumber: {
+    fontSize: TYPOGRAPHY.FONT_SIZE.SMALL,
+    backgroundColor: COLORS.PRIMARY,
+    color: COLORS.TEXT_LIGHT,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    overflow: 'hidden',
+    marginRight: SPACING.SMALL,
+  },
+  dateText: {
+    fontSize: TYPOGRAPHY.FONT_SIZE.SMALL,
+    color: COLORS.TEXT_MEDIUM,
+  },
+  description: {
+    fontSize: TYPOGRAPHY.FONT_SIZE.MEDIUM,
+    color: COLORS.TEXT_MEDIUM,
+    lineHeight: 24,
+    marginTop: SPACING.SMALL,
+  },
+  playButton: {
+    backgroundColor: COLORS.SECONDARY,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: SPACING.SMALL,
+    paddingHorizontal: SPACING.MEDIUM,
+    borderRadius: 8,
+    marginTop: SPACING.MEDIUM,
+  },
+  playButtonText: {
+    color: COLORS.TEXT_LIGHT,
+    fontSize: TYPOGRAPHY.FONT_SIZE.MEDIUM,
+    fontWeight: '600',
+    marginLeft: SPACING.SMALL,
+  },
+  sectionContainer: {
+    marginTop: SPACING.MEDIUM,
+    backgroundColor: COLORS.CARD,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.BORDER,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.BORDER,
+  },
+  sectionHeader: {
+    padding: SPACING.MEDIUM,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.BORDER,
+  },
+  sectionIcon: {
+    marginRight: SPACING.SMALL,
+    color: COLORS.PRIMARY,
+  },
+  sectionTitle: {
+    fontSize: TYPOGRAPHY.FONT_SIZE.LARGE,
+    fontWeight: '600',
+    color: COLORS.TEXT_DARK,
+  },
+  creditsContainer: {
+    marginTop: SPACING.MEDIUM,
+    marginBottom: SPACING.MEDIUM,
+  },
+  creditsTitle: {
+    fontSize: TYPOGRAPHY.FONT_SIZE.LARGE,
+    fontWeight: '600',
+    color: COLORS.TEXT_DARK,
+    marginBottom: SPACING.SMALL,
+  },
+  creditItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: SPACING.SMALL,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.BORDER,
+  },
+  creditImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: SPACING.SMALL,
+    backgroundColor: COLORS.BORDER,
+  },
+  creditInfo: {
+    flex: 1,
+  },
+  creditName: {
+    fontSize: TYPOGRAPHY.FONT_SIZE.MEDIUM,
+    fontWeight: '500',
+    color: COLORS.TEXT_DARK,
+  },
+  creditRole: {
+    fontSize: TYPOGRAPHY.FONT_SIZE.SMALL,
+    color: COLORS.TEXT_MEDIUM,
+  },
+  linksList: {
+    padding: SPACING.MEDIUM,
+  },
+  linkItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: SPACING.SMALL,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.BORDER,
+  },
+  linkIcon: {
+    color: COLORS.SECONDARY,
+    marginRight: SPACING.SMALL,
+  },
+  linkText: {
+    fontSize: TYPOGRAPHY.FONT_SIZE.MEDIUM,
+    color: COLORS.SECONDARY,
+  },
+  collapsibleContainer: {
+    marginBottom: SPACING.MEDIUM,
+  },
+  collapsibleHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: SPACING.MEDIUM,
+    backgroundColor: COLORS.CARD,
+    borderRadius: 8,
+  },
+  collapsibleTitle: {
+    fontSize: TYPOGRAPHY.FONT_SIZE.LARGE,
+    fontWeight: '600',
+    color: COLORS.TEXT_DARK,
+  },
+  collapsibleContent: {
+    padding: SPACING.MEDIUM,
+    backgroundColor: COLORS.CARD,
+    borderRadius: 8,
+  },
+  contentText: {
+    fontSize: TYPOGRAPHY.FONT_SIZE.MEDIUM,
+    color: COLORS.TEXT_MEDIUM,
+    lineHeight: 24,
   },
   headerContainer: {
     width: '100%',
     aspectRatio: 16/9,
-    backgroundColor: '#000',
+    backgroundColor: COLORS.PRIMARY_LIGHT,
     alignItems: 'center',
     justifyContent: 'center',
   },
   videoContainer: {
     width: '100%',
     aspectRatio: 16/9,
-    backgroundColor: '#000',
+    backgroundColor: COLORS.PRIMARY_LIGHT,
     position: 'relative',
   },
   fullscreenContainer: {
@@ -886,7 +1099,7 @@ const styles = StyleSheet.create({
   },
   videoWrapper: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: COLORS.PRIMARY_LIGHT,
   },
   video: {
     width: '100%',
@@ -899,226 +1112,119 @@ const styles = StyleSheet.create({
   placeholderImage: {
     width: '100%',
     height: '100%',
-    backgroundColor: '#ddd',
+    backgroundColor: COLORS.BORDER,
     alignItems: 'center',
     justifyContent: 'center',
   },
   placeholderText: {
     fontSize: 60,
     fontWeight: 'bold',
-    color: '#fff',
+    color: COLORS.TEXT_LIGHT,
   },
   contentContainer: {
-    padding: 16,
+    padding: SPACING.MEDIUM,
   },
   episodeTitle: {
-    fontSize: 24,
+    fontSize: TYPOGRAPHY.FONT_SIZE.X_LARGE,
     fontWeight: 'bold',
-    color: '#333333',
-    marginBottom: 8,
+    color: COLORS.TEXT_DARK,
+    marginBottom: SPACING.SMALL,
   },
   episodeDate: {
-    fontSize: 16,
-    color: '#999999',
-    marginBottom: 16,
-  },
-  episodeDescription: {
-    fontSize: 16,
-    color: '#666666',
-    lineHeight: 24,
-    marginBottom: 20,
-  },
-  watchButton: {
-    backgroundColor: '#ff0000',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    marginBottom: 12,
-    alignItems: 'center',
-  },
-  listenButton: {
-    backgroundColor: '#0066cc',
-  },
-  watchButtonText: {
-    color: '#ffffff',
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
-  notesContainer: {
-    marginTop: 20,
-    marginBottom: 16,
-    padding: 15,
-    backgroundColor: '#f0f0f0',
-    borderRadius: 8,
-  },
-  notesTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333333',
-    marginBottom: 12,
-  },
-  notesText: {
-    fontSize: 15,
-    lineHeight: 22,
-    color: '#555',
-  },
-  creditsContainer: {
-    marginTop: 20,
-    marginBottom: 16,
-  },
-  creditsTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333333',
-    marginBottom: 12,
-  },
-  creditItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eeeeee',
-  },
-  creditRole: {
-    fontSize: 16,
-    color: '#333333',
-    fontWeight: '500',
-  },
-  creditPerson: {
-    fontSize: 16,
-    color: '#666666',
-  },
-  topicsContainer: {
-    marginTop: 20,
-  },
-  topicsTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333333',
-    marginBottom: 12,
-  },
-  topicsList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  topicTag: {
-    backgroundColor: '#eeeeee',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 16,
-    marginRight: 8,
-    marginBottom: 8,
-  },
-  topicText: {
-    color: '#666666',
-    fontSize: 14,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f5f5f5',
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: '#666666',
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f5f5f5',
-    padding: 20,
-  },
-  errorText: {
-    fontSize: 16,
-    color: '#ff0000',
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  retryButton: {
-    backgroundColor: '#ff0000',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-  },
-  retryButtonText: {
-    color: '#ffffff',
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
-  collapsibleContainer: {
-    marginBottom: 16,
-  },
-  collapsibleHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 12,
-    backgroundColor: '#f0f0f0',
-    borderRadius: 8,
-  },
-  collapsibleTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333333',
-  },
-  collapsibleContent: {
-    padding: 12,
-    backgroundColor: '#f9f9f9',
-    borderRadius: 8,
-  },
-  contentText: {
-    fontSize: 16,
-    color: '#666666',
-    lineHeight: 24,
-  },
-  linksList: {
-    flexDirection: 'column',
-  },
-  linkItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eeeeee',
-  },
-  linkText: {
-    fontSize: 16,
-    color: '#333333',
-    marginLeft: 8,
-  },
-  filesList: {
-    flexDirection: 'column',
-  },
-  fileItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eeeeee',
-  },
-  fileText: {
-    fontSize: 16,
-    color: '#333333',
-    marginLeft: 8,
+    fontSize: TYPOGRAPHY.FONT_SIZE.MEDIUM,
+    color: COLORS.TEXT_MEDIUM,
+    marginBottom: SPACING.MEDIUM,
   },
   metadataContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: SPACING.SMALL,
   },
   episodeNumberBadge: {
-    backgroundColor: '#eeeeee',
+    backgroundColor: COLORS.PRIMARY,
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 16,
   },
   episodeNumberText: {
-    fontSize: 16,
-    color: '#666666',
+    fontSize: TYPOGRAPHY.FONT_SIZE.MEDIUM,
+    color: COLORS.TEXT_LIGHT,
+  },
+  watchButton: {
+    backgroundColor: COLORS.SECONDARY,
+    paddingVertical: SPACING.SMALL,
+    paddingHorizontal: SPACING.MEDIUM,
+    borderRadius: 8,
+    marginBottom: SPACING.MEDIUM,
+    alignItems: 'center',
+  },
+  listenButton: {
+    backgroundColor: COLORS.PRIMARY,
+  },
+  watchButtonText: {
+    color: COLORS.TEXT_LIGHT,
+    fontSize: TYPOGRAPHY.FONT_SIZE.MEDIUM,
+    fontWeight: '600',
+  },
+  streamingOptions: {
+    flexDirection: 'column',
+    padding: SPACING.MEDIUM,
+    gap: SPACING.MEDIUM,
+  },
+  streamingOption: {
+    backgroundColor: COLORS.CARD,
+    paddingVertical: SPACING.SMALL,
+    paddingHorizontal: SPACING.MEDIUM,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.SMALL,
+    borderWidth: 1,
+    borderColor: COLORS.BORDER,
+  },
+  streamingOptionText: {
+    fontSize: TYPOGRAPHY.FONT_SIZE.MEDIUM,
+    color: COLORS.TEXT_DARK,
+    fontWeight: '500',
+  },
+  downloadOptions: {
+    flexDirection: 'column',
+    padding: SPACING.MEDIUM,
+    gap: SPACING.MEDIUM,
+  },
+  downloadOption: {
+    backgroundColor: COLORS.CARD,
+    paddingVertical: SPACING.SMALL,
+    paddingHorizontal: SPACING.MEDIUM,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.SMALL,
+    borderWidth: 1,
+    borderColor: COLORS.BORDER,
+  },
+  downloadOptionText: {
+    fontSize: TYPOGRAPHY.FONT_SIZE.MEDIUM,
+    color: COLORS.TEXT_DARK,
+    fontWeight: '500',
+  },
+  downloadProgressContainer: {
+    padding: SPACING.MEDIUM,
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: SPACING.SMALL,
+    backgroundColor: COLORS.CARD,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.BORDER,
+    marginTop: SPACING.SMALL,
+  },
+  downloadProgressText: {
+    fontSize: TYPOGRAPHY.FONT_SIZE.MEDIUM,
+    color: COLORS.TEXT_DARK,
+    fontWeight: '500',
   },
   controlsOverlay: {
     position: 'absolute',
@@ -1133,7 +1239,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
+    padding: SPACING.MEDIUM,
   },
   qualityContainer: {
     flexDirection: 'row',
@@ -1143,38 +1249,38 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    padding: 8,
+    padding: SPACING.SMALL,
     borderRadius: 8,
   },
   qualityText: {
-    fontSize: 16,
-    color: '#fff',
-    marginRight: 8,
+    fontSize: TYPOGRAPHY.FONT_SIZE.MEDIUM,
+    color: COLORS.TEXT_LIGHT,
+    marginRight: SPACING.SMALL,
   },
   qualityOptions: {
     position: 'absolute',
     top: 40,
     left: 0,
-    backgroundColor: '#fff',
-    padding: 8,
+    backgroundColor: COLORS.CARD,
+    padding: SPACING.SMALL,
     borderRadius: 8,
     zIndex: 1,
   },
   qualityOption: {
-    padding: 8,
+    padding: SPACING.SMALL,
     borderBottomWidth: 1,
-    borderBottomColor: '#eeeeee',
+    borderBottomColor: COLORS.BORDER,
   },
   selectedQuality: {
-    backgroundColor: '#eeeeee',
+    backgroundColor: COLORS.BORDER,
   },
   qualityOptionText: {
-    fontSize: 16,
-    color: '#333333',
+    fontSize: TYPOGRAPHY.FONT_SIZE.MEDIUM,
+    color: COLORS.TEXT_DARK,
   },
   fullscreenButton: {
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    padding: 8,
+    padding: SPACING.SMALL,
     borderRadius: 8,
   },
   centerControls: {
@@ -1183,26 +1289,26 @@ const styles = StyleSheet.create({
   },
   playPauseButton: {
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    padding: 16,
+    padding: SPACING.MEDIUM,
     borderRadius: 16,
   },
   bottomControls: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
+    padding: SPACING.MEDIUM,
   },
   timeText: {
-    fontSize: 16,
-    color: '#fff',
+    fontSize: TYPOGRAPHY.FONT_SIZE.MEDIUM,
+    color: COLORS.TEXT_LIGHT,
   },
   seekBarContainer: {
     flex: 1,
-    marginHorizontal: 16,
+    marginHorizontal: SPACING.MEDIUM,
   },
   seekBarBackground: {
     height: 4,
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.TEXT_LIGHT,
     borderRadius: 2,
   },
   seekBarProgress: {
@@ -1210,7 +1316,7 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     height: 4,
-    backgroundColor: '#ff0000',
+    backgroundColor: COLORS.PRIMARY,
     borderRadius: 2,
   },
   seekBarInput: {
@@ -1224,7 +1330,7 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: '#ff0000',
+    backgroundColor: COLORS.PRIMARY,
   },
   noVideoContainer: {
     flex: 1,
@@ -1232,67 +1338,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   noVideoText: {
-    fontSize: 24,
-    color: '#fff',
-  },
-  streamingOptions: {
-    flexDirection: 'column',
-    padding: 12,
-    gap: 12,
-  },
-  streamingOption: {
-    backgroundColor: '#f5f5f5',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-  },
-  streamingOptionText: {
-    fontSize: 16,
-    color: '#333333',
-    fontWeight: '500',
-  },
-  downloadOptions: {
-    flexDirection: 'column',
-    padding: 12,
-    gap: 12,
-  },
-  downloadOption: {
-    backgroundColor: '#f5f5f5',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-  },
-  downloadOptionText: {
-    fontSize: 16,
-    color: '#333333',
-    fontWeight: '500',
-  },
-  downloadProgressContainer: {
-    padding: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 10,
-    backgroundColor: '#e6f7ff',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#b3e0ff',
-    marginTop: 8,
-  },
-  downloadProgressText: {
-    fontSize: 16,
-    color: '#0086e6',
-    fontWeight: '500',
+    fontSize: TYPOGRAPHY.FONT_SIZE.X_LARGE,
+    color: COLORS.TEXT_LIGHT,
   },
 });
 

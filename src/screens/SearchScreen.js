@@ -13,6 +13,7 @@ import SearchBar from '../components/SearchBar';
 import ShowItem from '../components/ShowItem';
 import EpisodeItem from '../components/EpisodeItem';
 import ErrorView from '../components/ErrorView';
+import { COLORS, SPACING, TYPOGRAPHY } from '../utils/theme';
 
 const SearchScreen = ({ navigation }) => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -105,7 +106,7 @@ const SearchScreen = ({ navigation }) => {
     if (loading) {
       return (
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color="#ff0000" />
+          <ActivityIndicator size="large" color={COLORS.CTA} />
           <Text style={styles.loadingText}>Searching...</Text>
         </View>
       );
@@ -196,55 +197,55 @@ const SearchScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: COLORS.BACKGROUND,
   },
   tabsContainer: {
     flexDirection: 'row',
-    backgroundColor: '#ffffff',
+    backgroundColor: COLORS.CARD,
     borderBottomWidth: 1,
-    borderBottomColor: '#eeeeee',
+    borderBottomColor: COLORS.BORDER,
   },
   tab: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: SPACING.SMALL + 4,
     alignItems: 'center',
   },
   activeTab: {
     borderBottomWidth: 2,
-    borderBottomColor: '#ff0000',
+    borderBottomColor: COLORS.CTA,
   },
   tabText: {
-    fontSize: 14,
-    color: '#666666',
+    fontSize: TYPOGRAPHY.FONT_SIZE.MEDIUM,
+    color: COLORS.TEXT_MEDIUM,
   },
   activeTabText: {
-    color: '#ff0000',
+    color: COLORS.PRIMARY,
     fontWeight: 'bold',
   },
   listContent: {
-    padding: 16,
+    padding: SPACING.MEDIUM,
   },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: SPACING.MEDIUM,
   },
   loadingText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: '#666666',
+    marginTop: SPACING.SMALL + 4,
+    fontSize: TYPOGRAPHY.FONT_SIZE.MEDIUM,
+    color: COLORS.TEXT_MEDIUM,
   },
   emptyText: {
-    fontSize: 16,
-    color: '#666666',
+    fontSize: TYPOGRAPHY.FONT_SIZE.MEDIUM,
+    color: COLORS.TEXT_MEDIUM,
     textAlign: 'center',
   },
   personItem: {
-    backgroundColor: '#ffffff',
+    backgroundColor: COLORS.CARD,
     borderRadius: 8,
-    padding: 16,
-    marginBottom: 12,
+    padding: SPACING.MEDIUM,
+    marginBottom: SPACING.SMALL + 4,
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
@@ -252,14 +253,14 @@ const styles = StyleSheet.create({
     shadowRadius: 1.41,
   },
   personName: {
-    fontSize: 16,
+    fontSize: TYPOGRAPHY.FONT_SIZE.LARGE,
     fontWeight: 'bold',
-    color: '#333333',
+    color: COLORS.TEXT_DARK,
     marginBottom: 4,
   },
   personRole: {
-    fontSize: 14,
-    color: '#666666',
+    fontSize: TYPOGRAPHY.FONT_SIZE.MEDIUM,
+    color: COLORS.TEXT_MEDIUM,
   },
 });
 
