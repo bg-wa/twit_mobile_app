@@ -6,10 +6,11 @@ A React Native / Expo mobile application for TWiT.tv content.
 
 The TWiT Mobile App allows users to:
 - Browse TWiT shows and episodes
+- Watch video or listen to audio episodes
+- View detailed information about hosts and guests
 - Watch live streams
 - Search for content
 - Manage app settings and preferences
-- Cache content for offline viewing
 
 ## Prerequisites
 
@@ -37,8 +38,8 @@ The TWiT Mobile App allows users to:
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/your-username/TwitMobileAppExpo.git
-   cd TwitMobileAppExpo
+   git clone https://github.com/bg-wa/twit_mobile_app.git
+   cd twit_mobile_app
    ```
 
 2. **Install dependencies**
@@ -83,9 +84,6 @@ The TWiT Mobile App allows users to:
    # Kill existing Expo processes if needed
    pkill -f "expo start"
    
-   # Switch between app entry points in package.json
-   # Options: "./App.js", "./SimpleApp.js", "./MinimalApp.js"
-   
    # Force rebuild by clearing cache
    npx expo start --clear
    ```
@@ -99,48 +97,46 @@ The TWiT Mobile App allows users to:
 
 ```
 /TwitMobileAppExpo
-├── App.js                 # Main application entry point
-├── TestApp.js             # Simple test application for diagnostics
-├── SimpleApp.js           # Minimal app for debugging rendering
-├── app.json               # Expo configuration
+├── App.js                      # Main application entry point
+├── app.json                    # Expo configuration
 ├── /src
-│   ├── /components        # Reusable UI components
-│   ├── /screens           # Application screens
-│   ├── /services          # API and backend services
-│   ├── /theme             # Colors, typography and styles
-│   ├── /utils             # Helper functions and utilities
-│   └── /config            # Configuration files
-└── /assets                # Images, fonts and other assets
+│   ├── /components             # Reusable UI components
+│   │   ├── AppIcon.js          # TWiT app logo component
+│   │   ├── CollapsibleSection.js # Expandable content sections
+│   │   ├── DiagnosticScreen.js # Debug and testing screen
+│   │   └── NetworkStatusBar.js # Connection status indicator
+│   │
+│   ├── /screens                # Application screens
+│   │   ├── EpisodeDetailScreen.js # Episode playback and info
+│   │   ├── HomeScreen.js       # Main shows listing
+│   │   ├── PeopleScreen.js     # Hosts and guests directory
+│   │   ├── PersonDetailScreen.js # Individual person profile
+│   │   ├── SearchScreen.js     # Content search 
+│   │   ├── SettingsScreen.js   # App configuration
+│   │   ├── ShowDetailScreen.js # Show episodes and info
+│   │   └── StreamsScreen.js    # Live streams
+│   │
+│   ├── /services               # API and backend services
+│   │   ├── api.js              # TWiT API client
+│   │   └── playerManager.js    # Media playback management
+│   │
+│   ├── /utils                  # Helper functions and utilities
+│   │   ├── streamUtils.js      # Stream processing helpers
+│   │   ├── textUtils.js        # Text processing utilities
+│   │   └── theme.js            # App styling constants
+│   │
+│   └── /config                 # Configuration files
+│       └── credentials.js      # API keys (gitignored)
+│
+└── /assets                     # Images, fonts and other assets
 ```
-
-## Switching Between Entry Points
-
-The application includes multiple entry points for testing and diagnostics:
-
-1. **Main App**
-   ```
-   // package.json
-   "main": "./App.js"
-   ```
-
-2. **Diagnostic App**
-   ```
-   // package.json
-   "main": "./TestApp.js"
-   ```
-
-3. **Simple App**
-   ```
-   // package.json
-   "main": "./SimpleApp.js"
-   ```
 
 ## Troubleshooting
 
 ### White screen / splash screen stuck
 - Clear Metro bundler cache: `npx expo start --clear`
 - Check JavaScript bundle logs in Metro
-- Try the SimpleApp.js entry point to verify basic rendering
+- Verify that all dependencies are installed correctly
 
 ### Node.js version issues
 - Ensure Node.js 18.18.0+ is active: `node --version`
@@ -157,4 +153,12 @@ The application includes multiple entry points for testing and diagnostics:
 
 ## License
 
-[Insert license information here]
+This project is licensed under the **Creative Commons Attribution-NonCommercial 4.0 International License** (CC BY-NC 4.0).
+
+This means:
+- You are free to share and adapt the material
+- You must give appropriate credit to the original authors
+- You may not use the material for commercial purposes
+- Commercial adaptations are not permitted
+
+For more information, see the [full license text](https://creativecommons.org/licenses/by-nc/4.0/legalcode).
