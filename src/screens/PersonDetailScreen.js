@@ -14,42 +14,75 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import apiService from '../services/api';
+import { stripHtmlAndDecodeEntities } from '../utils/textUtils';
 
+// Legacy function for backward compatibility
 const stripHtmlTags = (html) => {
-  if (!html) return '';
-  return html.replace(/<\/?[^>]+(>|$)/g, '');
+  return stripHtmlAndDecodeEntities(html);
 };
 
 const PersonDetailScreen = ({ route, navigation }) => {
   const { personId } = route.params;
   const [person, setPerson] = useState(null);
-  const [episodes, setEpisodes] = useState([]);
-  const [episodesLoading, setEpisodesLoading] = useState(false);
-  const [episodesError, setEpisodesError] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
-  // State for collapsible section
+  // Episodes section state
   const [episodesExpanded, setEpisodesExpanded] = useState(false);
+  const [episodes, setEpisodes] = useState([]);
+  const [episodesLoading, setEpisodesLoading] = useState(false);
+  const [episodesError, setEpisodesError] = useState(null);
+  const [episodesLoaded, setEpisodesLoaded] = useState(false);
   const episodesRotation = useRef(new Animated.Value(0)).current;
-  
+
+  // Related Links section state
+  const [linksExpanded, setLinksExpanded] = useState(false);
+  const linksRotation = useRef(new Animated.Value(0)).current;
+
   useEffect(() => {
     fetchPersonDetails();
   }, [personId]);
   
   const toggleEpisodesSection = () => {
-    Animated.timing(episodesRotation, {
-      toValue: episodesExpanded ? 0 : 1,
-      duration: 300,
-      useNativeDriver: true,
-    }).start();
+    if (episodesExpanded) {
+      Animated.timing(episodesRotation, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      // Load episodes on first expand
+      if (!episodesLoaded) {
+        fetchPersonEpisodes();
+        setEpisodesLoaded(true);
+      }
+      
+      Animated.timing(episodesRotation, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+    }
     
     setEpisodesExpanded(!episodesExpanded);
-    
-    // Fetch episodes if expanding for the first time and we don't have episodes yet
-    if (!episodesExpanded && episodes.length === 0 && !episodesLoading) {
-      fetchPersonEpisodes();
+  };
+
+  const toggleLinksSection = () => {
+    if (linksExpanded) {
+      Animated.timing(linksRotation, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      Animated.timing(linksRotation, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
     }
+    
+    setLinksExpanded(!linksExpanded);
   };
 
   const fetchPersonDetails = async () => {
@@ -162,11 +195,11 @@ const PersonDetailScreen = ({ route, navigation }) => {
           
           {item.teaser ? (
             <Text style={styles.episodeDescription} numberOfLines={2}>
-              {stripHtmlTags(item.teaser)}
+              {stripHtmlAndDecodeEntities(item.teaser)}
             </Text>
           ) : item.description ? (
             <Text style={styles.episodeDescription} numberOfLines={2}>
-              {stripHtmlTags(item.description)}
+              {stripHtmlAndDecodeEntities(item.description)}
             </Text>
           ) : null}
         </View>
@@ -305,7 +338,7 @@ const PersonDetailScreen = ({ route, navigation }) => {
         {person.bio && (
           <View style={styles.sectionContainer}>
             <Text style={styles.sectionTitle}>Biography</Text>
-            <Text style={styles.bioText}>{stripHtmlTags(person.bio)}</Text>
+            <Text style={styles.bioText}>{stripHtmlAndDecodeEntities(person.bio)}</Text>
           </View>
         )}
 
@@ -314,17 +347,43 @@ const PersonDetailScreen = ({ route, navigation }) => {
 
         {person.relatedLinks && Array.isArray(person.relatedLinks) && person.relatedLinks.length > 0 && (
           <View style={styles.sectionContainer}>
-            <Text style={styles.sectionTitle}>Related Links</Text>
-            {person.relatedLinks.map((link, index) => (
-              <TouchableOpacity 
-                key={`link-${index}`}
-                style={styles.linkButton}
-                onPress={() => handleRelatedLinkPress(link.url)}
-              >
-                <Ionicons name="link" size={16} color="#f03e3e" />
-                <Text style={styles.linkText}>{link.title || link.url}</Text>
-              </TouchableOpacity>
-            ))}
+            <TouchableOpacity 
+              style={[
+                styles.sectionHeader, 
+                { borderBottomWidth: linksExpanded ? 1 : 0 }
+              ]} 
+              onPress={toggleLinksSection}
+            >
+              <View style={styles.sectionTitleContainer}>
+                <Ionicons name="link" size={20} color="#f03e3e" style={styles.sectionIcon} />
+                <Text style={styles.sectionTitle}>Related Links</Text>
+              </View>
+              <Animated.View style={{ 
+                transform: [{ 
+                  rotate: linksRotation.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: ['0deg', '180deg'],
+                  })
+                }] 
+              }}>
+                <Ionicons name="chevron-down" size={20} color="#6c757d" />
+              </Animated.View>
+            </TouchableOpacity>
+            
+            {linksExpanded && (
+              <View style={styles.linksContainer}>
+                {person.relatedLinks.map((link, index) => (
+                  <TouchableOpacity 
+                    key={`link-${index}`}
+                    style={styles.linkButton}
+                    onPress={() => handleRelatedLinkPress(link.url)}
+                  >
+                    <Ionicons name="link" size={16} color="#f03e3e" />
+                    <Text style={styles.linkText}>{link.title || link.url}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
           </View>
         )}
       </ScrollView>
@@ -613,6 +672,9 @@ const styles = StyleSheet.create({
     color: '#6c757d',
     textAlign: 'center',
     padding: 20,
+  },
+  linksContainer: {
+    paddingTop: 10,
   },
 });
 

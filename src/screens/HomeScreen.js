@@ -11,11 +11,11 @@ import {
   StatusBar
 } from 'react-native';
 import apiService from '../services/api';
+import { stripHtmlAndDecodeEntities } from '../utils/textUtils';
 
-// Helper function to strip HTML tags from text
+// Legacy function for backward compatibility
 const stripHtmlTags = (html) => {
-  if (!html) return '';
-  return html.replace(/<\/?[^>]+(>|$)/g, '');
+  return stripHtmlAndDecodeEntities(html);
 };
 
 const HomeScreen = ({ navigation }) => {

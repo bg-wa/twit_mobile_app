@@ -17,7 +17,7 @@ const PeopleScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [filterStaff, setFilterStaff] = useState(null); // null = all, true = staff only, false = non-staff
+  const [filterStaff, setFilterStaff] = useState(true); // Default to staff only (true = staff only)
 
   useEffect(() => {
     fetchPeople();

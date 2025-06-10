@@ -21,13 +21,13 @@ import * as ScreenOrientation from 'expo-screen-orientation';
 import Slider from '@react-native-community/slider';
 import * as FileSystem from 'expo-file-system';
 import apiService from '../services/api';
+import { stripHtmlAndDecodeEntities } from '../utils/textUtils';
 
 const { width, height } = Dimensions.get('window');
 
 // Helper function to strip HTML tags from text
 const stripHtmlTags = (html) => {
-  if (!html) return '';
-  return html.replace(/<\/?[^>]+(>|$)/g, '');
+  return stripHtmlAndDecodeEntities(html);
 };
 
 // Collapsible Section Component
