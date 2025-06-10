@@ -11,13 +11,9 @@ import {
   Linking
 } from 'react-native';
 import apiService from '../services/api';
-import { stripHtmlAndDecodeEntities } from '../utils/textUtils';
+import { stripHtmlAndDecodeEntities, decodeHtmlEntities } from '../utils/textUtils';
 import { COLORS, SPACING, TYPOGRAPHY } from '../utils/theme';
-
-// Legacy function for backward compatibility
-const stripHtmlTags = (html) => {
-  return stripHtmlAndDecodeEntities(html);
-};
+import Ionicons from 'react-native-vector-icons/Ionicons';
 
 const extractImageUrl = (show) => {
   if (show.coverArt) {
@@ -64,6 +60,22 @@ const extractEpisodeImageUrl = (episode) => {
   }
   
   return null;
+};
+
+const formatFileSize = (sizeInBytes) => {
+  if (!sizeInBytes) return null;
+  
+  const bytes = parseInt(sizeInBytes);
+  if (isNaN(bytes)) return null;
+  
+  // Convert to MB or GB as appropriate
+  if (bytes < 1024 * 1024) {
+    return `${(bytes / 1024).toFixed(1)} KB`;
+  } else if (bytes < 1024 * 1024 * 1024) {
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  } else {
+    return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+  }
 };
 
 const ShowDetailScreen = ({ route, navigation }) => {
@@ -124,11 +136,27 @@ const ShowDetailScreen = ({ route, navigation }) => {
   }, [id, initialShowData]);
 
   const renderEpisodeItem = ({ item }) => {
-    // Debug the image URL resolution for this episode
     const imageUrl = extractEpisodeImageUrl(item);
-    console.log(`Episode ${item.id} (${item.label}) image source:`, 
-      imageUrl ? `Using URL: ${imageUrl}` : 'Using placeholder');
     
+    // Extract running time from the first available video quality
+    const runningTime = 
+      (item.video_hd && item.video_hd.runningTime) || 
+      (item.video_large && item.video_large.runningTime) || 
+      (item.video_small && item.video_small.runningTime) ||
+      (item.video_audio && item.video_audio.runningTime);
+      
+    // Check if this episode has video
+    const hasVideo = 
+      (item.video_hd && item.video_hd.mediaUrl) || 
+      (item.video_large && item.video_large.mediaUrl) || 
+      (item.video_small && item.video_small.mediaUrl) ||
+      item.videoUrl;
+      
+    // Check if this episode has audio
+    const hasAudio = 
+      (item.video_audio && item.video_audio.mediaUrl) ||
+      item.audioUrl;
+      
     return (
       <TouchableOpacity
         style={styles.episodeItem}
@@ -162,18 +190,28 @@ const ShowDetailScreen = ({ route, navigation }) => {
                 </Text>
               </View>
             )}
-            <Text style={styles.episodeDate}>
-              {item.airingDate ? new Date(item.airingDate).toLocaleDateString() : 'Unknown date'}
-            </Text>
+            
+            {item.airingDate && (
+              <Text style={[styles.episodeDate, { marginLeft: 8 }]}>
+                {new Date(item.airingDate).toLocaleDateString()}
+              </Text>
+            )}
+            
+            {runningTime && (
+              <Text style={[styles.episodeRunningTime, { marginLeft: 8 }]}>
+                <Ionicons name="time-outline" size={12} color={COLORS.TEXT_SECONDARY} style={styles.metaIcon} />
+                {" "}{runningTime}
+              </Text>
+            )}
           </View>
           
           {item.teaser ? (
             <Text style={styles.episodeDescription} numberOfLines={2}>
-              {stripHtmlTags(item.teaser)}
+              {stripHtmlAndDecodeEntities(item.teaser)}
             </Text>
           ) : item.description ? (
             <Text style={styles.episodeDescription} numberOfLines={2}>
-              {stripHtmlTags(item.description)}
+              {stripHtmlAndDecodeEntities(item.description)}
             </Text>
           ) : null}
         </View>
@@ -226,25 +264,25 @@ const ShowDetailScreen = ({ route, navigation }) => {
           
           {show.description && (
             <Text style={styles.showDescription}>
-              {stripHtmlTags(show.description)}
+              {stripHtmlAndDecodeEntities(show.description)}
             </Text>
           )}
           
           {show.tagLine && (
             <Text style={styles.showTagLine}>
-              {stripHtmlTags(show.tagLine)}
+              {stripHtmlAndDecodeEntities(show.tagLine)}
             </Text>
           )}
           
           {show.showNotes && (
             <Text style={styles.showNotes}>
-              {stripHtmlTags(show.showNotes)}
+              {stripHtmlAndDecodeEntities(show.showNotes)}
             </Text>
           )}
           
           {show.showContactInfo && (
             <Text style={styles.showContactInfo}>
-              {stripHtmlTags(show.showContactInfo)}
+              {stripHtmlAndDecodeEntities(show.showContactInfo)}
             </Text>
           )}
           
@@ -405,30 +443,36 @@ const styles = StyleSheet.create({
   },
   episodeMetaRow: {
     flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
     flexWrap: 'wrap',
-    marginBottom: SPACING.SMALL / 2,
   },
   episodeNumberBadge: {
     backgroundColor: COLORS.PRIMARY,
-    paddingHorizontal: 6,
+    paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 4,
-    overflow: 'hidden',
-    marginRight: SPACING.SMALL,
-    marginBottom: 2,
+    marginRight: 8,
   },
   episodeNumberText: {
-    fontSize: TYPOGRAPHY.FONT_SIZE.SMALL,
-    color: COLORS.TEXT_LIGHT,
+    color: 'white',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
   episodeDate: {
-    fontSize: TYPOGRAPHY.FONT_SIZE.SMALL,
-    color: COLORS.TEXT_MEDIUM,
+    color: COLORS.TEXT_SECONDARY,
+    fontSize: 12,
+    marginRight: 8,
   },
-  episodeDescription: {
-    fontSize: TYPOGRAPHY.FONT_SIZE.SMALL,
-    color: COLORS.TEXT_MEDIUM,
-    marginTop: 2,
+  episodeRunningTime: {
+    color: COLORS.TEXT_SECONDARY,
+    fontSize: 12,
+    marginRight: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  metaIcon: {
+    marginRight: 2,
   },
   loadingContainer: {
     flex: 1,

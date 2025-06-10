@@ -19,17 +19,12 @@ import { Video, ResizeMode } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import Slider from '@react-native-community/slider';
-import * as FileSystem from 'expo-file-system';
 import apiService from '../services/api';
-import { stripHtmlAndDecodeEntities } from '../utils/textUtils';
+import playerManager from '../services/playerManager';
+import { decodeHtmlEntities, stripHtmlAndDecodeEntities } from '../utils/textUtils';
 import { COLORS, SPACING, TYPOGRAPHY } from '../utils/theme';
 
 const { width, height } = Dimensions.get('window');
-
-// Helper function to strip HTML tags from text
-const stripHtmlTags = (html) => {
-  return stripHtmlAndDecodeEntities(html);
-};
 
 // Collapsible Section Component
 const CollapsibleSection = ({ title, children, initiallyExpanded = false, expanded, setExpanded, rotation }) => {
@@ -57,7 +52,7 @@ const CollapsibleSection = ({ title, children, initiallyExpanded = false, expand
 
   return (
     <View style={styles.collapsibleContainer}>
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.collapsibleHeader}
         onPress={toggleExpand}
         activeOpacity={0.8}
@@ -96,14 +91,30 @@ const extractImageUrl = (episode) => {
     } else if (episode.coverArt.url) {
       return episode.coverArt.url;
     }
-  } 
-  
+  }
+
   // Fallback to the image property if it's a string
   if (typeof episode.image === 'string') {
     return episode.image;
   }
-  
+
   return null;
+};
+
+const formatFileSize = (sizeInBytes) => {
+  if (!sizeInBytes) return null;
+  
+  const bytes = parseInt(sizeInBytes);
+  if (isNaN(bytes)) return null;
+  
+  // Convert to MB or GB as appropriate
+  if (bytes < 1024 * 1024) {
+    return `${(bytes / 1024).toFixed(1)} KB`;
+  } else if (bytes < 1024 * 1024 * 1024) {
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  } else {
+    return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+  }
 };
 
 const EpisodeDetailScreen = ({ route, navigation }) => {
@@ -124,50 +135,95 @@ const EpisodeDetailScreen = ({ route, navigation }) => {
   const [showQualityOptions, setShowQualityOptions] = useState(false);
   const controlsTimeout = useRef(null);
   const scrollViewRef = useRef(null);
+  const playerId = useRef(`episode-${id}`).current;
+  const [isAudioOnly, setIsAudioOnly] = useState(false);
+  const [playbackPosition, setPlaybackPosition] = useState(0);
+  const [playbackDuration, setPlaybackDuration] = useState(100); // Default to 100 to avoid 0 division
 
+  // Player manager static registry - only called once when component mounts
   useEffect(() => {
-    const fetchEpisodeDetails = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const episodeData = await apiService.getEpisodeById(id);
-        console.log('Episode data structure:', Object.keys(episodeData));
-        
-        // Find potential video fields
-        const videoKeys = Object.keys(episodeData).filter(key => 
-          key.includes('video') || key.includes('media') || key.includes('stream')
-        );
-        console.log('Potential video fields:', videoKeys);
-        
-        if (videoKeys.length > 0) {
-          videoKeys.forEach(key => {
-            console.log(`Field ${key}:`, episodeData[key]);
+    // Register this player with the player manager
+    if (videoRef.current) {
+      playerManager.registerPlayer(playerId, () => {
+        if (videoRef.current) {
+          videoRef.current.pauseAsync().catch(err => {
+            console.error('Error pausing video:', err);
           });
         }
-        
-        console.log('Episode data received:', JSON.stringify(episodeData, null, 2).substring(0, 1000) + '...');
-        setEpisode(episodeData);
-        const url = getVideoUrl(episodeData);
-        console.log('Video URL extracted:', url);
-        setVideoUrl(url);
-        setLoading(false);
-      } catch (err) {
-        console.error('Error fetching episode details:', err);
-        setError('Failed to load episode details. Please try again.');
-        setLoading(false);
-      }
-    };
+      });
+    }
 
-    fetchEpisodeDetails();
-
-    // Clean up orientation lock when component unmounts
+    // Clean up when unmounting
     return () => {
+      playerManager.unregisterPlayer(playerId);
       ScreenOrientation.unlockAsync();
       if (controlsTimeout.current) {
         clearTimeout(controlsTimeout.current);
       }
     };
+  }, [playerId]);
+
+  // Fetch episode data on component mount
+  useEffect(() => {
+    const fetchEpisodeDetails = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const episodeData = await apiService.getEpisodeById(id, showId);
+        console.log('Episode data structure:', JSON.stringify(episodeData, null, 2));
+
+        // Log video URLs specifically to debug the issue
+        console.log('Video HD:', episodeData.video_hd);
+        console.log('Video Large:', episodeData.video_large);
+        console.log('Video Small:', episodeData.video_small);
+
+        setEpisode(episodeData);
+        setLoading(false);
+
+        // Try to extract video URL - but don't auto-play
+        const url = getVideoUrl(episodeData);
+        console.log('Video URL extracted:', url);
+        
+        // Set the URL without triggering auto-play
+        if (url) {
+          setVideoUrl(url);
+          // Ensure controls are visible for manual play
+          setShowControls(true);
+          // Make sure we're not auto-playing
+          setIsPlaying(false);
+        }
+
+      } catch (err) {
+        console.error('Error fetching episode details:', err);
+        setError('Failed to load episode details. Please try again later.');
+        setLoading(false);
+      }
+    };
+
+    fetchEpisodeDetails();
   }, [id]);
+
+  // Register with navigation focus events to handle app state changes
+  useEffect(() => {
+    const unsubscribeFocus = navigation.addListener('focus', () => {
+      console.log('EpisodeDetailScreen focused');
+    });
+
+    const unsubscribeBlur = navigation.addListener('blur', () => {
+      console.log('EpisodeDetailScreen blurred');
+      if (videoRef.current && isPlaying) {
+        videoRef.current.pauseAsync().catch(err => {
+          console.error('Error pausing video on blur:', err);
+        });
+      }
+    });
+
+    return () => {
+      unsubscribeFocus();
+      unsubscribeBlur();
+    };
+  }, [navigation, isPlaying]);
 
   // Controls auto-hide timeout
   useEffect(() => {
@@ -184,35 +240,142 @@ const EpisodeDetailScreen = ({ route, navigation }) => {
     };
   }, [showControls, isPlaying, showQualityOptions]);
 
-  const togglePlayPause = () => {
-    if (videoRef.current) {
-      if (isPlaying) {
-        videoRef.current.pauseAsync();
-      } else {
-        videoRef.current.playAsync();
+  // Add useEffect to ensure video ref is properly reset when switching between audio and video
+  useEffect(() => {
+    // This effect runs when videoUrl or isAudioOnly changes
+    if (videoUrl) {
+      console.log(`Media source changed to ${isAudioOnly ? 'audio' : 'video'}: ${videoUrl}`);
+      
+      // Ensure we have a clean state for the player
+      if (videoRef.current) {
+        videoRef.current.loadAsync(
+          { uri: videoUrl },
+          { shouldPlay: false, positionMillis: 0 }
+        ).catch(err => {
+          console.error('Error loading media in useEffect:', err);
+        });
+      }
+    }
+  }, [videoUrl, isAudioOnly]);
+
+  const togglePlayPause = async () => {
+    try {
+      if (videoRef.current) {
+        // Get current status
+        const status = await videoRef.current.getStatusAsync();
+        
+        // If currently playing, pause it
+        if (status.isPlaying) {
+          await videoRef.current.pauseAsync();
+          setIsPlaying(false);
+          return;
+        }
+        
+        // If not playing or not loaded properly, play it
+        // Stop any other playing media first
+        playerManager.stopAllPlayers();
+        
+        // Play this media
+        await videoRef.current.playAsync();
+        setIsPlaying(true);
+      }
+    } catch (error) {
+      console.error('Error toggling playback:', error);
+      
+      // If we get an error, try to reload the media
+      if (videoRef.current && videoUrl) {
+        try {
+          await videoRef.current.loadAsync(
+            { uri: videoUrl },
+            { shouldPlay: true }
+          );
+          setIsPlaying(true);
+        } catch (reloadError) {
+          console.error('Failed to reload media:', reloadError);
+          Alert.alert('Playback Error', 'There was a problem playing this media.');
+        }
       }
     }
   };
 
-  const handleWatchVideo = (url) => {
+  // Add helper for checking if a URL is audio-only
+  const isAudioFormat = (url, quality) => {
+    if (!url) return false;
+    
+    // Check if quality explicitly says it's audio
+    if (quality && (quality.toLowerCase().includes('audio') || quality === 'Audio')) {
+      return true;
+    }
+    
+    // Check URL extension for common audio formats
+    const audioExtensions = ['.mp3', '.aac', '.m4a', '.wav', '.ogg'];
+    return audioExtensions.some(ext => url.toLowerCase().includes(ext));
+  };
+
+  // Updated function to handle different video formats
+  const handleWatchVideo = async (url, quality) => {
+    console.log(`Setting up ${quality} media with URL:`, url);
+
     if (!url) {
-      Alert.alert('Error', 'No video URL available for this quality');
+      Alert.alert(
+        'Media Not Available',
+        `The ${quality} quality version is not available.`,
+        [{ text: 'OK' }]
+      );
       return;
     }
-    
-    setVideoUrl(url);
-    // Scroll up to the video player
-    if (scrollViewRef.current) {
-      scrollViewRef.current.scrollTo({ x: 0, y: 0, animated: true });
-    }
-    
-    // Start playing after a short delay to allow the video to load
-    setTimeout(() => {
+
+    try {
+      // Stop current playback if any
       if (videoRef.current) {
-        videoRef.current.playAsync();
-        setIsPlaying(true);
+        try {
+          await videoRef.current.pauseAsync();
+          // Unload previous media to ensure clean state when switching formats
+          await videoRef.current.unloadAsync();
+        } catch (err) {
+          console.log('Error stopping current media (expected if first load):', err);
+        }
       }
-    }, 500);
+
+      // Determine if this is audio-only content
+      const isAudio = isAudioFormat(url, quality);
+      console.log(`Is this audio-only content? ${isAudio ? 'Yes' : 'No'}`);
+      
+      // Update state
+      setVideoUrl(url);
+      setPlaybackQuality(quality);
+      setIsAudioOnly(isAudio);
+      setShowControls(true);
+      setIsPlaying(false); // Always start paused
+      
+      // Scroll to player
+      if (scrollViewRef.current) {
+        scrollViewRef.current.scrollTo({ x: 0, y: 0, animated: true });
+      }
+
+      // Stop any other players
+      playerManager.stopAllPlayers();
+      
+      console.log(`Loading ${isAudio ? 'audio' : 'video'} source: ${url}`);
+      
+      // Wait a moment for state updates to propagate
+      setTimeout(() => {
+        if (videoRef.current) {
+          // Load the new media
+          videoRef.current.loadAsync(
+            { uri: url },
+            { shouldPlay: false, positionMillis: 0 }
+          ).then(() => {
+            console.log(`Successfully loaded ${isAudio ? 'audio' : 'video'} source`);
+          }).catch(err => {
+            console.error('Error loading media source:', err);
+            Alert.alert('Playback Error', 'Failed to load the selected media.');
+          });
+        }
+      }, 200);
+    } catch (err) {
+      console.error('Error in handleWatchVideo:', err);
+    }
   };
 
   const toggleFullscreen = async () => {
@@ -234,35 +397,70 @@ const EpisodeDetailScreen = ({ route, navigation }) => {
     }
   };
 
+  // Improve onPlaybackStatusUpdate to better handle audio playback states
   const onPlaybackStatusUpdate = (status) => {
+    //console.log('Playback status update:', JSON.stringify(status));
+    
     if (status.isLoaded) {
-      setIsPlaying(status.isPlaying);
-      setCurrentTime(status.positionMillis);
-      setDuration(status.durationMillis);
-      
-      // If video finished playing
-      if (status.didJustFinish) {
-        setIsPlaying(false);
-        setShowControls(true);
+      // Update isPlaying state to reflect actual playback status
+      if (isPlaying !== status.isPlaying) {
+        setIsPlaying(status.isPlaying);
       }
+      
+      // Update time tracking
+      if (status.positionMillis !== undefined) {
+        setCurrentTime(status.positionMillis);
+        setPlaybackPosition(status.positionMillis / 1000);
+      }
+      
+      if (status.durationMillis !== undefined) {
+        setDuration(status.durationMillis);
+        setPlaybackDuration(status.durationMillis / 1000);
+      }
+
+      // For video (not audio), auto-hide controls after a delay
+      if (status.isPlaying && showControls && !isAudioOnly) {
+        clearTimeout(controlsTimeout.current);
+        controlsTimeout.current = setTimeout(() => {
+          setShowControls(false);
+        }, 3000);
+      }
+    } else if (status.error) {
+      console.error(`Playback error: ${status.error}`);
+      Alert.alert('Playback Error', 'There was a problem playing this media.');
+    }
+  };
+
+  // Improve onSeek handler to work better with audio
+  const onSeek = async (value) => {
+    console.log(`Seeking to ${value} seconds`);
+    try {
+      if (videoRef.current) {
+        // Convert to milliseconds for the expo Video component
+        const seekPosition = value * 1000;
+        
+        // Set the new position in the player
+        await videoRef.current.setPositionAsync(seekPosition);
+        
+        // Update UI states
+        setPlaybackPosition(value);
+        setCurrentTime(seekPosition);
+        
+        console.log(`Successfully sought to position ${seekPosition}ms`);
+      }
+    } catch (error) {
+      console.error('Error seeking:', error);
     }
   };
 
   const handleVideoPress = () => {
-    // Toggle controls visibility when video is tapped
-    setShowControls(!showControls);
-    
-    // Reset auto-hide timer
-    if (!showControls) {
-      if (controlsTimeout.current) {
-        clearTimeout(controlsTimeout.current);
-      }
-    }
-  };
-
-  const handleSeek = (value) => {
-    if (videoRef.current) {
-      videoRef.current.setPositionAsync(value);
+    console.log("Video/Audio container pressed");
+    // For audio, we always want to toggle playback
+    if (isAudioOnly) {
+      togglePlayPause();
+    } else {
+      // For video, toggle controls visibility
+      setShowControls(!showControls);
     }
   };
 
@@ -278,7 +476,7 @@ const EpisodeDetailScreen = ({ route, navigation }) => {
     // In a real app, this would switch video source based on quality
     setPlaybackQuality(quality);
     setShowQualityOptions(false);
-    
+
     // This is where you would implement actual quality switching
     // For this demo, we'll just show the selected quality
     console.log(`Selected quality: ${quality}`);
@@ -286,26 +484,31 @@ const EpisodeDetailScreen = ({ route, navigation }) => {
 
   // Determine video URL from episode data
   const getVideoUrl = (episode) => {
+    console.log('Extracting video URL from episode data...');
+    
     if (!episode) return null;
     
-    console.log("Checking for video URL in episode:", episode.id);
-    
-    // Helper function to look for video URLs deeply in the object
+    // Recursive function to search for video URLs in complex objects
     const findVideoUrlInObject = (obj, prefix = '') => {
       if (!obj || typeof obj !== 'object') return null;
       
-      // Check direct video URL fields
-      if (obj.mediaUrl && typeof obj.mediaUrl === 'string' && 
-          (obj.mediaUrl.includes('.mp4') || obj.mediaUrl.includes('.mov'))) {
-        console.log(`Found video URL in ${prefix}.mediaUrl:`, obj.mediaUrl);
-        return obj.mediaUrl;
+      // Check if this object itself has a URL property
+      if (obj.url && typeof obj.url === 'string' && 
+          (obj.url.includes('.mp4') || 
+           obj.url.includes('.mov') || 
+           obj.url.includes('.m3u8') ||
+           obj.url.includes('.mp3'))) {  // Add mp3 to supported formats
+        console.log(`Found nested URL in ${prefix}.url:`, obj.url);
+        return obj.url;
       }
       
-      // Check for a URL property that might contain a video
-      if (obj.url && typeof obj.url === 'string' && 
-          (obj.url.includes('.mp4') || obj.url.includes('.mov'))) {
-        console.log(`Found video URL in ${prefix}.url:`, obj.url);
-        return obj.url;
+      if (obj.mediaUrl && typeof obj.mediaUrl === 'string' && 
+          (obj.mediaUrl.includes('.mp4') || 
+           obj.mediaUrl.includes('.mov') || 
+           obj.mediaUrl.includes('.m3u8') ||
+           obj.mediaUrl.includes('.mp3'))) {  // Add mp3 to supported formats
+        console.log(`Found nested URL in ${prefix}.mediaUrl:`, obj.mediaUrl);
+        return obj.mediaUrl;
       }
       
       // Look in nested objects
@@ -335,20 +538,28 @@ const EpisodeDetailScreen = ({ route, navigation }) => {
       return episode.video_small.mediaUrl;
     }
     
+    // Check for audio version as well
+    if (episode.video_audio && episode.video_audio.mediaUrl) {
+      console.log("Found audio URL:", episode.video_audio.mediaUrl);
+      return episode.video_audio.mediaUrl;
+    }
+    
     // Check standard naming variations
     const videoFields = [
-      'video', 'videoUrl', 'videoURL', 'video_url', 'media', 
-      'videos', 'stream', 'streams', 'hls', 'm3u8'
+      'video', 'videoUrl', 'videoURL', 'video_url', 'media',
+      'videos', 'stream', 'streams', 'hls', 'm3u8', 
+      'audio', 'audioUrl', 'audioURL', 'audio_url', 'mp3' // Added audio-related fields
     ];
     
     for (const field of videoFields) {
       if (episode[field]) {
         // If it's a string, check if it's a video URL
-        if (typeof episode[field] === 'string' && 
-            (episode[field].includes('.mp4') || 
-             episode[field].includes('.mov') ||
-             episode[field].includes('.m3u8'))) {
-          console.log(`Found video URL in ${field}:`, episode[field]);
+        if (typeof episode[field] === 'string' &&
+          (episode[field].includes('.mp4') ||
+            episode[field].includes('.mov') ||
+            episode[field].includes('.m3u8') ||
+            episode[field].includes('.mp3'))) {  // Added mp3 support
+          console.log(`Found media URL in ${field}:`, episode[field]);
           return episode[field];
         }
         
@@ -369,146 +580,165 @@ const EpisodeDetailScreen = ({ route, navigation }) => {
       console.log("Found YouTube video URL:", episode.video_youtube);
       return episode.video_youtube;
     }
-
+    
     // Then try enclosures - these can contain video files
     if (episode.enclosures && episode.enclosures.length > 0) {
-      const videoEnclosure = episode.enclosures.find(e => 
-        e.url && (e.type?.includes('video') || e.url.match(/\.(mp4|mov|wmv|avi|flv|webm|m3u8)$/i))
+      const mediaEnclosure = episode.enclosures.find(e =>
+        e.url && (e.type?.includes('video') || e.type?.includes('audio') || 
+                  e.url.match(/\.(mp4|mov|wmv|avi|flv|webm|m3u8|mp3|aac|ogg)$/i))
       );
       
-      if (videoEnclosure) {
-        console.log("Found video in enclosures:", videoEnclosure.url);
-        return videoEnclosure.url;
+      if (mediaEnclosure) {
+        console.log("Found media in enclosures:", mediaEnclosure.url);
+        return mediaEnclosure.url;
       }
     }
     
-    console.log("No video URL found for episode:", episode.id);
+    console.log("No media URL found for episode:", episode.id);
+    return null;
+  };
+
+  // Function to extract correct mediaUrl format from different video objects
+  const extractMediaUrl = (videoObj) => {
+    if (!videoObj) return null;
+
+    // Handle different possible formats of video objects
+    if (typeof videoObj === 'string') {
+      return videoObj;
+    }
+
+    // Check for mediaUrl property
+    if (videoObj.mediaUrl) {
+      return videoObj.mediaUrl;
+    }
+
+    // Check for URL property (some API responses use url instead of mediaUrl)
+    if (videoObj.url) {
+      return videoObj.url;
+    }
+
     return null;
   };
 
   // Render video player with custom controls
   const renderVideoPlayer = () => {
-    console.log("Rendering video player with URL:", videoUrl);
-    
+    console.log("Rendering player with URL:", videoUrl);
+    console.log("Is audio only:", isAudioOnly);
+
     return (
       <View style={[styles.videoContainer, isFullscreen && styles.fullscreenContainer]}>
-        <TouchableOpacity 
+        <TouchableOpacity
           activeOpacity={1}
           style={styles.videoWrapper}
           onPress={handleVideoPress}
         >
           {videoUrl ? (
-            <Video
-              ref={videoRef}
-              source={{ uri: videoUrl }}
-              rate={1.0}
-              volume={1.0}
-              isMuted={false}
-              resizeMode={isFullscreen ? ResizeMode.CONTAIN : ResizeMode.COVER}
-              shouldPlay={false}
-              isLooping={false}
-              style={styles.video}
-              onPlaybackStatusUpdate={onPlaybackStatusUpdate}
-              useNativeControls={true} // Use native controls for testing
-              posterSource={extractImageUrl(episode) ? { uri: extractImageUrl(episode) } : undefined}
-              usePoster={true}
-            />
-          ) : (
-            <View style={styles.noVideoContainer}>
-              <Text style={styles.noVideoText}>No video available</Text>
-            </View>
-          )}
-          
-          {/* For now, we'll use native controls instead of custom ones */}
-          {false && showControls && (
-            <View style={styles.controlsOverlay}>
-              <View style={styles.topControls}>
-                <View style={styles.qualityContainer}>
-                  <TouchableOpacity 
-                    style={styles.qualityButton}
-                    onPress={() => setShowQualityOptions(!showQualityOptions)}
-                  >
-                    <Text style={styles.qualityText}>{playbackQuality}</Text>
-                    <Ionicons name="chevron-down" size={16} color="#fff" />
-                  </TouchableOpacity>
+            <View style={styles.videoPlayerContainer}>
+              {/* Only render visible video component when not in audio mode */}
+              {!isAudioOnly ? (
+                <Video
+                  ref={videoRef}
+                  source={{ uri: videoUrl }}
+                  rate={1.0}
+                  volume={1.0}
+                  isMuted={false}
+                  resizeMode={isFullscreen ? ResizeMode.CONTAIN : ResizeMode.COVER}
+                  shouldPlay={false}
+                  isLooping={false}
+                  positionMillis={0}
+                  style={styles.video}
+                  onPlaybackStatusUpdate={onPlaybackStatusUpdate}
+                  useNativeControls={false}
+                  posterSource={extractImageUrl(episode) ? { uri: extractImageUrl(episode) } : undefined}
+                  usePoster={true}
+                />
+              ) : (
+                /* For audio-only mode, create audio player with poster but keep the video element */
+                <View style={styles.audioPlayerContainer}>
+                  {/* The actual audio player - kept for playback functionality */}
+                  <Video
+                    ref={videoRef}
+                    source={{ uri: videoUrl }}
+                    rate={1.0}
+                    volume={1.0}
+                    isMuted={false}
+                    shouldPlay={false}
+                    isLooping={false}
+                    positionMillis={0}
+                    style={{ width: 1, height: 1, opacity: 0, position: 'absolute' }} /* Hidden but functional */
+                    onPlaybackStatusUpdate={onPlaybackStatusUpdate}
+                  />
                   
-                  {showQualityOptions && (
-                    <View style={styles.qualityOptions}>
-                      {availableQualities.map((quality) => (
-                        <TouchableOpacity
-                          key={quality}
-                          style={[
-                            styles.qualityOption,
-                            playbackQuality === quality && styles.selectedQuality
-                          ]}
-                          onPress={() => changeQuality(quality)}
-                        >
-                          <Text style={styles.qualityOptionText}>{quality}</Text>
-                        </TouchableOpacity>
-                      ))}
+                  {/* Audio display with poster image only - no overlay text */}
+                  {extractImageUrl(episode) ? (
+                    <Image
+                      source={{ uri: extractImageUrl(episode) }}
+                      style={styles.audioPosterImage}
+                      resizeMode="contain"
+                    />
+                  ) : (
+                    <View style={styles.audioPlaceholderContainer}>
+                      <Ionicons name="musical-note" size={80} color="rgba(255,255,255,0.3)" />
                     </View>
                   )}
                 </View>
-                
-                <TouchableOpacity 
-                  style={styles.fullscreenButton}
-                  onPress={toggleFullscreen}
-                >
-                  <Ionicons 
-                    name={isFullscreen ? "contract-outline" : "expand-outline"} 
-                    size={24} 
-                    color="#fff" 
-                  />
-                </TouchableOpacity>
-              </View>
-              
-              <View style={styles.centerControls}>
-                <TouchableOpacity 
+              )}
+            </View>
+          ) : (
+            <View style={styles.noVideoContainer}>
+              <Text style={styles.noVideoText}>No media available</Text>
+            </View>
+          )}
+
+          {/* Always show controls in audio mode */}
+          {(showControls || isAudioOnly) && videoUrl && (
+            <View style={styles.controlsOverlay}>
+              <View style={styles.controlsRow}>
+                <TouchableOpacity
                   style={styles.playPauseButton}
                   onPress={togglePlayPause}
                 >
-                  <Ionicons 
-                    name={isPlaying ? "pause" : "play"} 
-                    size={50} 
-                    color="#fff" 
+                  <Ionicons
+                    name={isPlaying ? "pause" : "play"}
+                    size={30}
+                    color="white"
+                  />
+                </TouchableOpacity>
+                <View style={styles.progressContainer}>
+                  <Slider
+                    style={styles.progressSlider}
+                    minimumValue={0}
+                    maximumValue={playbackDuration > 0 ? playbackDuration : 100}
+                    value={playbackPosition}
+                    onSlidingComplete={onSeek}
+                    minimumTrackTintColor="#FFFFFF"
+                    maximumTrackTintColor="rgba(255, 255, 255, 0.5)"
+                    thumbTintColor="#FFFFFF"
+                  />
+                  <View style={styles.timeContainer}>
+                    <Text style={styles.timeText}>{formatTime(currentTime)}</Text>
+                    <Text style={styles.timeText}>
+                      {formatTime(duration)}
+                    </Text>
+                  </View>
+                </View>
+
+                <TouchableOpacity onPress={toggleFullscreen}>
+                  <Ionicons
+                    name={isFullscreen ? 'contract' : 'expand'}
+                    size={30}
+                    color="white"
                   />
                 </TouchableOpacity>
               </View>
-              
-              <View style={styles.bottomControls}>
-                <Text style={styles.timeText}>{formatTime(currentTime)}</Text>
-                <View style={styles.seekBarContainer}>
-                  <View style={styles.seekBarBackground} />
-                  <View 
-                    style={[
-                      styles.seekBarProgress, 
-                      { 
-                        width: duration ? 
-                          `${(currentTime / duration) * 100}%` : '0%' 
-                      }
-                    ]} 
-                  />
-                  <Slider
-                    style={styles.seekBarInput}
-                    minimumValue={0}
-                    maximumValue={duration}
-                    value={currentTime}
-                    onValueChange={(value) => handleSeek(value)}
-                    minimumTrackTintColor="#ff0000"
-                    maximumTrackTintColor="#fff"
-                  />
-                  <View 
-                    style={[
-                      styles.seekBarKnob, 
-                      { 
-                        left: duration ? 
-                          `${(currentTime / duration) * 100}%` : '0%' 
-                      }
-                    ]} 
-                  />
-                </View>
-                <Text style={styles.timeText}>{formatTime(duration)}</Text>
-              </View>
+
+              <TouchableOpacity
+                style={styles.qualityButton}
+                onPress={() => setShowQualityOptions(true)}
+              >
+                <Text style={styles.qualityButtonText}>{playbackQuality}</Text>
+                <Ionicons name="chevron-down" size={16} color="white" />
+              </TouchableOpacity>
             </View>
           )}
         </TouchableOpacity>
@@ -519,18 +749,14 @@ const EpisodeDetailScreen = ({ route, navigation }) => {
   // State for collapsible sections
   const [showNotesExpanded, setShowNotesExpanded] = useState(false);
   const [relatedLinksExpanded, setRelatedLinksExpanded] = useState(false);
-  const [filesExpanded, setFilesExpanded] = useState(false);
   const [streamingExpanded, setStreamingExpanded] = useState(true); // Default expanded
-  const [downloadExpanded, setDownloadExpanded] = useState(false);
-  const [downloading, setDownloading] = useState(false);
-  const [downloadProgress, setDownloadProgress] = useState(0);
+  const [filesExpanded, setFilesExpanded] = useState(false);
 
   // Animated values for rotations
   const showNotesRotation = useRef(new Animated.Value(0)).current;
   const relatedLinksRotation = useRef(new Animated.Value(0)).current;
-  const filesRotation = useRef(new Animated.Value(0)).current;
   const streamingRotation = useRef(new Animated.Value(1)).current; // Default expanded
-  const downloadRotation = useRef(new Animated.Value(0)).current;
+  const filesRotation = useRef(new Animated.Value(0)).current;
 
   // Animation function
   const toggleAnimation = (expanded, setExpanded, rotation) => {
@@ -550,59 +776,97 @@ const EpisodeDetailScreen = ({ route, navigation }) => {
     setExpanded(!expanded);
   };
 
-  const downloadVideo = async (url, quality) => {
-    if (!url) {
-      Alert.alert('Error', `No ${quality} video available for this episode`);
-      return;
-    }
+  // Section for rendering streaming quality options
+  const renderStreamingQualityOptions = () => {
+    if (!episode) return null;
     
-    try {
-      setDownloading(true);
-      setDownloadProgress(0);
+    // Check if we have any streaming options
+    const hasStreamingOptions = 
+      episode.video_hd || 
+      episode.video_large || 
+      episode.video_small ||
+      episode.video_audio;
       
-      // Generate a safe filename from episode title
-      const safeFileName = episode.title
-        ? episode.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()
-        : 'twit_video';
-      
-      const fileUri = FileSystem.documentDirectory + 
-        `${safeFileName}_${quality}_${Date.now()}.mp4`;
-      
-      const downloadResumable = FileSystem.createDownloadResumable(
-        url,
-        fileUri,
-        {},
-        (downloadProgress) => {
-          const progress = downloadProgress.totalBytesWritten / downloadProgress.totalBytesExpectedToWrite;
-          setDownloadProgress(progress);
-        }
-      );
-
-      const download = await downloadResumable.downloadAsync();
-      setDownloading(false);
-      
-      if (download && download.uri) {
-        console.log('Download complete:', download.uri);
-        Alert.alert(
-          'Download Complete', 
-          'Video saved to your device. You can access it from the Files app.',
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                setDownloadProgress(0);
-              }
-            }
-          ]
-        );
-      } else {
-        throw new Error('Download failed');
-      }
-    } catch (err) {
-      setDownloading(false);
-      console.error('Error downloading video:', err);
-      Alert.alert('Error Downloading Video', err.message);
-    }
+    if (!hasStreamingOptions) return null;
+    
+    return (
+      <CollapsibleSection
+        title="Streaming Options"
+        expanded={streamingExpanded}
+        setExpanded={setStreamingExpanded}
+        rotation={streamingRotation}
+      >
+        <View style={styles.streamingOptions}>
+          {episode.video_hd && episode.video_hd.mediaUrl && (
+            <TouchableOpacity 
+              style={styles.streamingButton}
+              onPress={() => handleWatchVideo(extractMediaUrl(episode.video_hd), 'HD')}
+            >
+              <Ionicons name="videocam" size={20} color="#33A1FD" style={styles.streamingIcon} />
+              <View style={styles.streamingTextContainer}>
+                <Text style={styles.streamingButtonText}>HD Quality</Text>
+                {episode.video_hd.size && (
+                  <Text style={styles.streamingMetaText}>
+                    {formatFileSize(episode.video_hd.size)} • {episode.video_hd.runningTime || 'Unknown length'}
+                  </Text>
+                )}
+              </View>
+            </TouchableOpacity>
+          )}
+          
+          {episode.video_large && episode.video_large.mediaUrl && (
+            <TouchableOpacity 
+              style={styles.streamingButton}
+              onPress={() => handleWatchVideo(extractMediaUrl(episode.video_large), 'Large')}
+            >
+              <Ionicons name="videocam" size={20} color="#33A1FD" style={styles.streamingIcon} />
+              <View style={styles.streamingTextContainer}>
+                <Text style={styles.streamingButtonText}>Large Quality</Text>
+                {episode.video_large.size && (
+                  <Text style={styles.streamingMetaText}>
+                    {formatFileSize(episode.video_large.size)} • {episode.video_large.runningTime || 'Unknown length'}
+                  </Text>
+                )}
+              </View>
+            </TouchableOpacity>
+          )}
+          
+          {episode.video_small && episode.video_small.mediaUrl && (
+            <TouchableOpacity 
+              style={styles.streamingButton}
+              onPress={() => handleWatchVideo(extractMediaUrl(episode.video_small), 'Small')}
+            >
+              <Ionicons name="videocam" size={20} color="#33A1FD" style={styles.streamingIcon} />
+              <View style={styles.streamingTextContainer}>
+                <Text style={styles.streamingButtonText}>Small Quality</Text>
+                {episode.video_small.size && (
+                  <Text style={styles.streamingMetaText}>
+                    {formatFileSize(episode.video_small.size)} • {episode.video_small.runningTime || 'Unknown length'}
+                  </Text>
+                )}
+              </View>
+            </TouchableOpacity>
+          )}
+          
+          {episode.video_audio && episode.video_audio.mediaUrl && (
+            <TouchableOpacity 
+              style={styles.streamingButton}
+              onPress={() => handleWatchVideo(extractMediaUrl(episode.video_audio), 'Audio')}
+            >
+              <Ionicons name="headset" size={20} color="#33A1FD" style={styles.streamingIcon} />
+              <View style={styles.streamingTextContainer}>
+                <Text style={styles.streamingButtonText}>Audio Only</Text>
+                {episode.video_audio.size && (
+                  <Text style={styles.streamingMetaText}>
+                    {formatFileSize(episode.video_audio.size)} • {episode.video_audio.runningTime || 'Unknown length'}
+                  </Text>
+                )}
+              </View>
+            </TouchableOpacity>
+          )}
+        </View>
+      </CollapsibleSection>
+    );
   };
 
   if (loading) {
@@ -618,8 +882,8 @@ const EpisodeDetailScreen = ({ route, navigation }) => {
     return (
       <View style={styles.errorContainer}>
         <Text style={styles.errorText}>{error || 'Failed to load episode details.'}</Text>
-        <TouchableOpacity 
-          style={styles.retryButton} 
+        <TouchableOpacity
+          style={styles.retryButton}
           onPress={() => navigation.goBack()}
         >
           <Text style={styles.retryButtonText}>Go Back</Text>
@@ -632,7 +896,7 @@ const EpisodeDetailScreen = ({ route, navigation }) => {
     <ScrollView ref={scrollViewRef} style={styles.container}>
       <View style={styles.headerContainer}>
         {(videoUrl) ? (
-          <View style={{flex: 1}}>
+          <View style={{ flex: 1 }}>
             {renderVideoPlayer()}
           </View>
         ) : extractImageUrl(episode) ? (
@@ -649,10 +913,10 @@ const EpisodeDetailScreen = ({ route, navigation }) => {
           </View>
         )}
       </View>
-      
+
       <View style={styles.contentContainer}>
         <Text style={styles.episodeTitle}>{episode.label || title || 'Unknown Episode'}</Text>
-        
+
         <View style={styles.metadataContainer}>
           {episode.episodeNumber && (
             <View style={styles.episodeNumberBadge}>
@@ -661,14 +925,25 @@ const EpisodeDetailScreen = ({ route, navigation }) => {
               </Text>
             </View>
           )}
-          
+
           {episode.airingDate && (
             <Text style={styles.episodeDate}>
               Aired: {new Date(episode.airingDate).toLocaleDateString()}
             </Text>
           )}
         </View>
-        
+
+        {(episode.video_hd || episode.video_large || episode.video_small || episode.video_audio) && (
+          <View style={styles.videoInfoContainer}>
+            {(episode.video_hd?.runningTime || episode.video_audio?.runningTime) && (
+              <View style={styles.videoInfoItem}>
+                <Ionicons name="time-outline" size={16} color={COLORS.TEXT_SECONDARY} style={styles.videoInfoIcon} />
+                <Text style={styles.videoInfoText}>Duration: {episode.video_hd?.runningTime || episode.video_audio?.runningTime}</Text>
+              </View>
+            )}
+          </View>
+        )}
+
         {!videoUrl && episode.videoUrl && (
           <TouchableOpacity
             style={styles.watchButton}
@@ -677,7 +952,7 @@ const EpisodeDetailScreen = ({ route, navigation }) => {
             <Text style={styles.watchButtonText}>Watch Episode</Text>
           </TouchableOpacity>
         )}
-        
+
         {episode.audioUrl && (
           <TouchableOpacity
             style={[styles.watchButton, styles.listenButton]}
@@ -686,96 +961,25 @@ const EpisodeDetailScreen = ({ route, navigation }) => {
             <Text style={styles.watchButtonText}>Listen to Episode</Text>
           </TouchableOpacity>
         )}
-        
-        <CollapsibleSection 
-          title="Streaming" 
-          expanded={streamingExpanded} 
-          setExpanded={setStreamingExpanded} 
-          rotation={streamingRotation}
-        >
-          <View style={styles.streamingOptions}>
-            <TouchableOpacity 
-              style={styles.streamingOption}
-              onPress={() => handleWatchVideo(episode.video_hd?.mediaUrl)}
-            >
-              <Ionicons name="videocam" size={24} color="#2176FF" />
-              <Text style={styles.streamingOptionText}>HD Quality</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.streamingOption}
-              onPress={() => handleWatchVideo(episode.video_large?.mediaUrl)}
-            >
-              <Ionicons name="videocam" size={24} color="#2176FF" />
-              <Text style={styles.streamingOptionText}>Large Quality</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.streamingOption}
-              onPress={() => handleWatchVideo(episode.video_small?.mediaUrl)}
-            >
-              <Ionicons name="videocam" size={24} color="#2176FF" />
-              <Text style={styles.streamingOptionText}>Small Quality</Text>
-            </TouchableOpacity>
-          </View>
-        </CollapsibleSection>
-        
-        <CollapsibleSection 
-          title="Download" 
-          expanded={downloadExpanded} 
-          setExpanded={setDownloadExpanded} 
-          rotation={downloadRotation}
-        >
-          <View style={styles.downloadOptions}>
-            <TouchableOpacity 
-              style={styles.downloadOption}
-              onPress={() => downloadVideo(episode.video_hd?.mediaUrl, 'HD')}
-              disabled={downloading}
-            >
-              <Ionicons name="cloud-download" size={24} color="#33A1FD" />
-              <Text style={styles.downloadOptionText}>HD Quality</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.downloadOption}
-              onPress={() => downloadVideo(episode.video_large?.mediaUrl, 'Large')}
-              disabled={downloading}
-            >
-              <Ionicons name="cloud-download" size={24} color="#33A1FD" />
-              <Text style={styles.downloadOptionText}>Large Quality</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.downloadOption}
-              onPress={() => downloadVideo(episode.video_small?.mediaUrl, 'Small')}
-              disabled={downloading}
-            >
-              <Ionicons name="cloud-download" size={24} color="#33A1FD" />
-              <Text style={styles.downloadOptionText}>Small Quality</Text>
-            </TouchableOpacity>
-            {downloading && (
-              <View style={styles.downloadProgressContainer}>
-                <ActivityIndicator size="small" color={COLORS.CTA} />
-                <Text style={styles.downloadProgressText}>
-                  Downloading... {Math.floor(downloadProgress * 100)}%
-                </Text>
-              </View>
-            )}
-          </View>
-        </CollapsibleSection>
-        
+
+        {renderStreamingQualityOptions()}
+
         {episode.showNotes && (
-          <CollapsibleSection 
-            title="Show Notes" 
-            expanded={showNotesExpanded} 
-            setExpanded={setShowNotesExpanded} 
+          <CollapsibleSection
+            title="Show Notes"
+            expanded={showNotesExpanded}
+            setExpanded={setShowNotesExpanded}
             rotation={showNotesRotation}
           >
-            <Text style={styles.contentText}>{stripHtmlTags(episode.showNotes)}</Text>
+            <Text style={styles.contentText}>{stripHtmlAndDecodeEntities(episode.showNotes)}</Text>
           </CollapsibleSection>
         )}
-        
+
         {episode.relatedLinks && episode.relatedLinks.length > 0 && (
-          <CollapsibleSection 
-            title="Related Links" 
-            expanded={relatedLinksExpanded} 
-            setExpanded={setRelatedLinksExpanded} 
+          <CollapsibleSection
+            title="Related Links"
+            expanded={relatedLinksExpanded}
+            setExpanded={setRelatedLinksExpanded}
             rotation={relatedLinksRotation}
           >
             <View style={styles.linksList}>
@@ -794,12 +998,12 @@ const EpisodeDetailScreen = ({ route, navigation }) => {
             </View>
           </CollapsibleSection>
         )}
-        
+
         {episode.files && episode.files.length > 0 && (
-          <CollapsibleSection 
-            title="Files" 
-            expanded={filesExpanded} 
-            setExpanded={setFilesExpanded} 
+          <CollapsibleSection
+            title="Files"
+            expanded={filesExpanded}
+            setExpanded={setFilesExpanded}
             rotation={filesRotation}
           >
             <View style={styles.filesList}>
@@ -818,18 +1022,18 @@ const EpisodeDetailScreen = ({ route, navigation }) => {
             </View>
           </CollapsibleSection>
         )}
-        
+
         {episode.description && (
-          <CollapsibleSection 
-            title="Full Description" 
-            expanded={false} 
-            setExpanded={() => {}} 
+          <CollapsibleSection
+            title="Full Description"
+            expanded={false}
+            setExpanded={() => { }}
             rotation={new Animated.Value(0)}
           >
-            <Text style={styles.contentText}>{stripHtmlTags(episode.description)}</Text>
+            <Text style={styles.contentText}>{stripHtmlAndDecodeEntities(episode.description)}</Text>
           </CollapsibleSection>
         )}
-        
+
         {episode.credits && episode.credits.length > 0 && (
           <View style={styles.creditsContainer}>
             <Text style={styles.creditsTitle}>Credits</Text>
@@ -841,7 +1045,7 @@ const EpisodeDetailScreen = ({ route, navigation }) => {
             ))}
           </View>
         )}
-        
+
         {episode.topics && episode.topics.length > 0 && (
           <View style={styles.topicsContainer}>
             <Text style={styles.topicsTitle}>Topics</Text>
@@ -1078,14 +1282,14 @@ const styles = StyleSheet.create({
   },
   headerContainer: {
     width: '100%',
-    aspectRatio: 16/9,
+    aspectRatio: 16 / 9,
     backgroundColor: COLORS.PRIMARY_LIGHT,
     alignItems: 'center',
     justifyContent: 'center',
   },
   videoContainer: {
     width: '100%',
-    aspectRatio: 16/9,
+    aspectRatio: 16 / 9,
     backgroundColor: COLORS.PRIMARY_LIGHT,
     position: 'relative',
   },
@@ -1094,7 +1298,7 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     width: width,
-    height: width * (16/9),
+    height: width * (16 / 9),
     zIndex: 1,
   },
   videoWrapper: {
@@ -1172,7 +1376,7 @@ const styles = StyleSheet.create({
     padding: SPACING.MEDIUM,
     gap: SPACING.MEDIUM,
   },
-  streamingOption: {
+  streamingButton: {
     backgroundColor: COLORS.CARD,
     paddingVertical: SPACING.SMALL,
     paddingHorizontal: SPACING.MEDIUM,
@@ -1183,48 +1387,20 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.BORDER,
   },
-  streamingOptionText: {
+  streamingButtonText: {
     fontSize: TYPOGRAPHY.FONT_SIZE.MEDIUM,
     color: COLORS.TEXT_DARK,
     fontWeight: '500',
   },
-  downloadOptions: {
-    flexDirection: 'column',
-    padding: SPACING.MEDIUM,
-    gap: SPACING.MEDIUM,
+  streamingButtonSubtext: {
+    fontSize: TYPOGRAPHY.FONT_SIZE.SMALL,
+    color: COLORS.TEXT_MEDIUM,
   },
-  downloadOption: {
-    backgroundColor: COLORS.CARD,
-    paddingVertical: SPACING.SMALL,
-    paddingHorizontal: SPACING.MEDIUM,
-    borderRadius: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.SMALL,
-    borderWidth: 1,
-    borderColor: COLORS.BORDER,
+  streamingIcon: {
+    marginRight: SPACING.SMALL,
   },
-  downloadOptionText: {
-    fontSize: TYPOGRAPHY.FONT_SIZE.MEDIUM,
-    color: COLORS.TEXT_DARK,
-    fontWeight: '500',
-  },
-  downloadProgressContainer: {
-    padding: SPACING.MEDIUM,
-    justifyContent: 'center',
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: SPACING.SMALL,
-    backgroundColor: COLORS.CARD,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: COLORS.BORDER,
-    marginTop: SPACING.SMALL,
-  },
-  downloadProgressText: {
-    fontSize: TYPOGRAPHY.FONT_SIZE.MEDIUM,
-    color: COLORS.TEXT_DARK,
-    fontWeight: '500',
+  streamingTextContainer: {
+    flex: 1,
   },
   controlsOverlay: {
     position: 'absolute',
@@ -1235,102 +1411,40 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'space-between',
   },
-  topControls: {
+  controlsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: SPACING.MEDIUM,
   },
-  qualityContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  progressContainer: {
+    flex: 1,
+    marginHorizontal: SPACING.MEDIUM,
   },
-  qualityButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    padding: SPACING.SMALL,
-    borderRadius: 8,
+  progressSlider: {
+    width: '100%',
+    height: 20,
   },
-  qualityText: {
-    fontSize: TYPOGRAPHY.FONT_SIZE.MEDIUM,
-    color: COLORS.TEXT_LIGHT,
-    marginRight: SPACING.SMALL,
-  },
-  qualityOptions: {
-    position: 'absolute',
-    top: 40,
-    left: 0,
-    backgroundColor: COLORS.CARD,
-    padding: SPACING.SMALL,
-    borderRadius: 8,
-    zIndex: 1,
-  },
-  qualityOption: {
-    padding: SPACING.SMALL,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.BORDER,
-  },
-  selectedQuality: {
-    backgroundColor: COLORS.BORDER,
-  },
-  qualityOptionText: {
-    fontSize: TYPOGRAPHY.FONT_SIZE.MEDIUM,
-    color: COLORS.TEXT_DARK,
-  },
-  fullscreenButton: {
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    padding: SPACING.SMALL,
-    borderRadius: 8,
-  },
-  centerControls: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  playPauseButton: {
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    padding: SPACING.MEDIUM,
-    borderRadius: 16,
-  },
-  bottomControls: {
+  timeContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: SPACING.MEDIUM,
+    width: '100%',
   },
   timeText: {
     fontSize: TYPOGRAPHY.FONT_SIZE.MEDIUM,
     color: COLORS.TEXT_LIGHT,
   },
-  seekBarContainer: {
-    flex: 1,
-    marginHorizontal: SPACING.MEDIUM,
+  qualityButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    padding: SPACING.SMALL,
+    borderRadius: 8,
   },
-  seekBarBackground: {
-    height: 4,
-    backgroundColor: COLORS.TEXT_LIGHT,
-    borderRadius: 2,
-  },
-  seekBarProgress: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    height: 4,
-    backgroundColor: COLORS.PRIMARY,
-    borderRadius: 2,
-  },
-  seekBarInput: {
-    width: '100%',
-    height: 20,
-  },
-  seekBarKnob: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: COLORS.PRIMARY,
+  qualityButtonText: {
+    fontSize: TYPOGRAPHY.FONT_SIZE.MEDIUM,
+    color: COLORS.TEXT_LIGHT,
+    marginRight: SPACING.SMALL,
   },
   noVideoContainer: {
     flex: 1,
@@ -1340,6 +1454,54 @@ const styles = StyleSheet.create({
   noVideoText: {
     fontSize: TYPOGRAPHY.FONT_SIZE.X_LARGE,
     color: COLORS.TEXT_LIGHT,
+  },
+  videoInfoContainer: {
+    marginVertical: 10,
+    paddingHorizontal: 15,
+  },
+  videoInfoItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  videoInfoIcon: {
+    marginRight: 8,
+  },
+  videoInfoText: {
+    fontSize: 14,
+    color: COLORS.TEXT_SECONDARY,
+  },
+  videoPlayerContainer: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+    position: 'relative',
+  },
+  audioPlayerContainer: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+    position: 'relative',
+    backgroundColor: '#000',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  audioPosterImage: {
+    width: '100%',
+    height: '100%',
+    opacity: 0.9, // Make image more visible now that we don't have overlay text
+  },
+  audioPlaceholderContainer: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#1a1a1a',
+  },
+  playPauseButton: {
+    padding: 10,
+    borderRadius: 30,
+    backgroundColor: 'rgba(0,0,0,0.6)',
   },
 });
 

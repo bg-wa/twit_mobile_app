@@ -14,12 +14,24 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import apiService from '../services/api';
-import { stripHtmlAndDecodeEntities } from '../utils/textUtils';
-import { COLORS, SPACING, TYPOGRAPHY } from '../utils/theme';
+import { stripHtmlAndDecodeEntities, decodeHtmlEntities } from '../utils/textUtils';
+import { COLORS, TYPOGRAPHY, SPACING } from '../utils/theme';
 
-// Legacy function for backward compatibility
-const stripHtmlTags = (html) => {
-  return stripHtmlAndDecodeEntities(html);
+// Add utility function for formatting file sizes
+const formatFileSize = (sizeInBytes) => {
+  if (!sizeInBytes) return null;
+  
+  const bytes = parseInt(sizeInBytes);
+  if (isNaN(bytes)) return null;
+  
+  // Convert to MB or GB as appropriate
+  if (bytes < 1024 * 1024) {
+    return `${(bytes / 1024).toFixed(1)} KB`;
+  } else if (bytes < 1024 * 1024 * 1024) {
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  } else {
+    return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+  }
 };
 
 const PersonDetailScreen = ({ route, navigation }) => {
@@ -35,6 +47,10 @@ const PersonDetailScreen = ({ route, navigation }) => {
   const [episodesError, setEpisodesError] = useState(null);
   const [episodesLoaded, setEpisodesLoaded] = useState(false);
   const episodesRotation = useRef(new Animated.Value(0)).current;
+
+  // Biography section state
+  const [bioExpanded, setBioExpanded] = useState(true);
+  const bioRotation = useRef(new Animated.Value(1)).current;
 
   // Related Links section state
   const [linksExpanded, setLinksExpanded] = useState(false);
@@ -66,6 +82,24 @@ const PersonDetailScreen = ({ route, navigation }) => {
     }
     
     setEpisodesExpanded(!episodesExpanded);
+  };
+
+  const toggleBioSection = () => {
+    if (bioExpanded) {
+      Animated.timing(bioRotation, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      Animated.timing(bioRotation, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+    }
+    
+    setBioExpanded(!bioExpanded);
   };
 
   const toggleLinksSection = () => {
@@ -150,8 +184,26 @@ const PersonDetailScreen = ({ route, navigation }) => {
     // Extract image URL
     const imageUrl = extractEpisodeImageUrl(item);
     
+    // Extract video & audio information
+    const hasVideo = 
+      (item.video_hd && item.video_hd.mediaUrl) || 
+      (item.video_large && item.video_large.mediaUrl) || 
+      (item.video_small && item.video_small.mediaUrl) ||
+      item.videoUrl;
+      
+    const hasAudio = 
+      (item.video_audio && item.video_audio.mediaUrl) ||
+      item.audioUrl;
+    
+    // Get running time from the first available source
+    const runningTime = 
+      (item.video_hd && item.video_hd.runningTime) || 
+      (item.video_large && item.video_large.runningTime) || 
+      (item.video_small && item.video_small.runningTime) ||
+      (item.video_audio && item.video_audio.runningTime);
+    
     return (
-      <TouchableOpacity
+      <TouchableOpacity 
         style={styles.episodeItem}
         onPress={() => navigateToEpisode(item)}
       >
@@ -170,11 +222,12 @@ const PersonDetailScreen = ({ route, navigation }) => {
             </View>
           )}
         </View>
-        <View style={styles.episodeInfo}>
+        <View style={styles.episodeContent}>
           <Text style={styles.episodeTitle} numberOfLines={2}>
             {item.label || 'Untitled Episode'}
           </Text>
           
+          {/* Metadata row with date and running time */}
           <View style={styles.episodeMetaRow}>
             {item.episodeNumber && (
               <View style={styles.episodeNumberBadge}>
@@ -183,17 +236,29 @@ const PersonDetailScreen = ({ route, navigation }) => {
                 </Text>
               </View>
             )}
-            <Text style={styles.episodeDate}>
-              {item.airingDate ? new Date(item.airingDate).toLocaleDateString() : 'Unknown date'}
-            </Text>
             
+            {item.airingDate && (
+              <Text style={[styles.episodeDate, { marginLeft: 8 }]}>
+                {new Date(item.airingDate).toLocaleDateString()}
+              </Text>
+            )}
+            
+            {runningTime && (
+              <Text style={[styles.episodeRunningTime, { marginLeft: 8 }]}>
+                <Ionicons name="time-outline" size={12} color={COLORS.TEXT_SECONDARY} style={styles.metaIcon} />
+                {" "}{runningTime}
+              </Text>
+            )}
+            
+            {/* Show information if available */}
             {item.embedded && item.embedded.shows && item.embedded.shows[0] && (
-              <Text style={styles.episodeShow}>
-                {item.embedded.shows[0].label}
+              <Text style={[styles.episodeShow, { marginLeft: 8 }]}>
+                {" • "}{stripHtmlAndDecodeEntities(item.embedded.shows[0].label)}
               </Text>
             )}
           </View>
           
+          {/* Episode description */}
           {item.teaser ? (
             <Text style={styles.episodeDescription} numberOfLines={2}>
               {stripHtmlAndDecodeEntities(item.teaser)}
@@ -229,13 +294,13 @@ const PersonDetailScreen = ({ route, navigation }) => {
       <View style={styles.sectionContainer}>
         <TouchableOpacity 
           style={[
-            styles.sectionHeader,
+            styles.sectionHeader, 
             { borderBottomWidth: episodesExpanded ? 1 : 0 }
           ]} 
           onPress={toggleEpisodesSection}
         >
           <View style={styles.sectionTitleContainer}>
-            <Ionicons name="tv-outline" size={20} color="#f03e3e" style={styles.sectionIcon} />
+            <Ionicons name="videocam" size={20} color={COLORS.CTA} style={styles.sectionIcon} />
             <Text style={styles.sectionTitle}>Episodes</Text>
           </View>
           <Animated.View style={{ transform: [{ rotate: rotateInterpolation }] }}>
@@ -338,8 +403,34 @@ const PersonDetailScreen = ({ route, navigation }) => {
 
         {person.bio && (
           <View style={styles.sectionContainer}>
-            <Text style={styles.sectionTitle}>Biography</Text>
-            <Text style={styles.bioText}>{stripHtmlAndDecodeEntities(person.bio)}</Text>
+            <TouchableOpacity 
+              style={[
+                styles.sectionHeader, 
+                { borderBottomWidth: bioExpanded ? 1 : 0 }
+              ]} 
+              onPress={toggleBioSection}
+            >
+              <View style={styles.sectionTitleContainer}>
+                <Ionicons name="person" size={20} color={COLORS.CTA} style={styles.sectionIcon} />
+                <Text style={styles.sectionTitle}>Biography</Text>
+              </View>
+              <Animated.View style={{ 
+                transform: [{ 
+                  rotate: bioRotation.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: ['0deg', '180deg'],
+                  })
+                }] 
+              }}>
+                <Ionicons name="chevron-down" size={20} color="#6c757d" />
+              </Animated.View>
+            </TouchableOpacity>
+            
+            {bioExpanded && (
+              <View style={styles.bioContainer}>
+                <Text style={styles.bioText}>{stripHtmlAndDecodeEntities(person.bio)}</Text>
+              </View>
+            )}
           </View>
         )}
 
@@ -356,7 +447,7 @@ const PersonDetailScreen = ({ route, navigation }) => {
               onPress={toggleLinksSection}
             >
               <View style={styles.sectionTitleContainer}>
-                <Ionicons name="link" size={20} color="#f03e3e" style={styles.sectionIcon} />
+                <Ionicons name="link" size={20} color={COLORS.CTA} style={styles.sectionIcon} />
                 <Text style={styles.sectionTitle}>Related Links</Text>
               </View>
               <Animated.View style={{ 
@@ -522,11 +613,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: COLORS.TEXT_DARK,
   },
+  bioContainer: {
+    padding: SPACING.SMALL,
+  },
   bioText: {
     fontSize: TYPOGRAPHY.FONT_SIZE.MEDIUM,
     color: COLORS.TEXT_MEDIUM,
     lineHeight: 22,
-    padding: SPACING.MEDIUM,
   },
   episodesContainer: {
     padding: SPACING.MEDIUM,
@@ -588,32 +681,31 @@ const styles = StyleSheet.create({
     color: COLORS.TEXT_DARK,
     marginBottom: 4,
   },
-  episodeMeta: {
+  episodeMetaRow: {
     flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
     flexWrap: 'wrap',
-    marginBottom: 4,
-  },
-  episodeNumber: {
-    fontSize: TYPOGRAPHY.FONT_SIZE.SMALL,
-    backgroundColor: COLORS.PRIMARY,
-    color: COLORS.TEXT_LIGHT,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-    overflow: 'hidden',
-    marginRight: SPACING.SMALL,
-    marginBottom: 2,
   },
   episodeDate: {
     fontSize: TYPOGRAPHY.FONT_SIZE.SMALL,
-    color: COLORS.TEXT_MEDIUM,
-    marginRight: SPACING.SMALL,
-    marginBottom: 2,
+    color: COLORS.TEXT_SECONDARY,
+    marginRight: 8,
+  },
+  episodeRunningTime: {
+    fontSize: TYPOGRAPHY.FONT_SIZE.SMALL,
+    color: COLORS.TEXT_SECONDARY,
+    marginRight: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   episodeShow: {
     fontSize: TYPOGRAPHY.FONT_SIZE.SMALL,
-    color: COLORS.SECONDARY,
-    marginBottom: 2,
+    color: COLORS.TEXT_SECONDARY,
+    fontStyle: 'italic',
+  },
+  metaIcon: {
+    marginRight: 2,
   },
   episodeDescription: {
     fontSize: TYPOGRAPHY.FONT_SIZE.SMALL,
@@ -634,6 +726,34 @@ const styles = StyleSheet.create({
   },
   linksContainer: {
     paddingTop: SPACING.SMALL,
+  },
+  episodeChevronContainer: {
+    justifyContent: 'center',
+  },
+  placeholderEpisodeImage: {
+    width: 80,
+    height: 45,
+    borderRadius: 4,
+    backgroundColor: COLORS.PRIMARY_LIGHT,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  placeholderEpisodeText: {
+    fontSize: TYPOGRAPHY.FONT_SIZE.X_LARGE,
+    color: COLORS.TEXT_LIGHT,
+    fontWeight: 'bold',
+  },
+  episodeNumberBadge: {
+    backgroundColor: COLORS.PRIMARY,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginRight: 8,
+  },
+  episodeNumberText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
 });
 

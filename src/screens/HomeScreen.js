@@ -102,8 +102,7 @@ const HomeScreen = ({ navigation }) => {
   };
 
   const renderHeader = () => (
-    <View style={styles.header}>
-      <Text style={styles.headerTitle}>TWiT Shows</Text>
+    <View style={styles.streamsButtonContainer}>
       <TouchableOpacity
         style={styles.streamsButton}
         onPress={() => navigation.navigate('Streams')}
@@ -160,22 +159,12 @@ const styles = StyleSheet.create({
   },
   showsList: {
     paddingHorizontal: SPACING.MEDIUM,
-    paddingTop: SPACING.SMALL,
+    paddingTop: 0,
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: SPACING.SMALL,
-    paddingVertical: SPACING.SMALL,
-    marginBottom: SPACING.SMALL,
-    backgroundColor: COLORS.CARD,
-    borderRadius: 8,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: COLORS.TEXT_DARK,
+  streamsButtonContainer: {
+    alignItems: 'flex-end',
+    marginVertical: 4,
+    paddingRight: 4,
   },
   streamsButton: {
     backgroundColor: COLORS.SECONDARY,

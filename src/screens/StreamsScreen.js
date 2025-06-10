@@ -10,19 +10,31 @@ import {
   Image,
   Alert
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import apiService from '../services/api';
+import playerManager from '../services/playerManager';
 import { COLORS, SPACING, TYPOGRAPHY } from '../utils/theme';
 import { stripHtmlAndDecodeEntities } from '../utils/textUtils';
 import { openStreamInApp } from '../utils/streamUtils';
 
-const StreamsScreen = () => {
+const StreamsScreen = ({ navigation }) => {
   const [streams, setStreams] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     fetchStreams();
-  }, []);
+    
+    // Add focus listener to stop external players when returning to this screen
+    const unsubscribe = navigation.addListener('focus', () => {
+      // Clear external app record when returning to this screen
+      // This ensures we track when the user comes back to the app
+      playerManager.clearExternalApp();
+    });
+    
+    // Clean up the listener on unmount
+    return unsubscribe;
+  }, [navigation]);
 
   const fetchStreams = async () => {
     setLoading(true);
@@ -85,16 +97,6 @@ const StreamsScreen = () => {
           <Text style={styles.streamType}>
             {item.streamType === 'video' ? '📹 Video' : '🎧 Audio'}
           </Text>
-          {item.streamProviders && (
-            <Text style={styles.providerLabel}>
-              {stripHtmlAndDecodeEntities(item.streamProviders.label)}
-            </Text>
-          )}
-          {item.streamPreferred && (
-            <View style={styles.preferredBadge}>
-              <Text style={styles.preferredBadgeText}>Preferred</Text>
-            </View>
-          )}
         </View>
         <TouchableOpacity
           style={styles.watchButton}
@@ -196,41 +198,19 @@ const styles = StyleSheet.create({
   streamTypeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    flexWrap: 'wrap',
     marginBottom: SPACING.SMALL
   },
   streamType: {
     fontSize: TYPOGRAPHY.FONT_SIZE.MEDIUM,
-    color: COLORS.TEXT_MEDIUM,
+    color: COLORS.TEXT,
     marginRight: SPACING.SMALL,
-  },
-  providerLabel: {
-    fontSize: TYPOGRAPHY.FONT_SIZE.SMALL,
-    color: COLORS.TEXT_MEDIUM,
-    marginLeft: SPACING.SMALL,
-    backgroundColor: COLORS.BORDER,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  preferredBadge: {
-    backgroundColor: COLORS.CTA,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4,
-    marginLeft: SPACING.SMALL,
-  },
-  preferredBadgeText: {
-    color: COLORS.TEXT_DARK,
-    fontWeight: 'bold',
-    fontSize: TYPOGRAPHY.FONT_SIZE.SMALL,
   },
   watchButton: {
     backgroundColor: COLORS.CTA,
-    paddingVertical: SPACING.SMALL + 4,
-    paddingHorizontal: SPACING.MEDIUM + 4,
-    borderRadius: 8,
+    padding: SPACING.SMALL,
+    borderRadius: 4,
     alignItems: 'center',
+    marginTop: SPACING.SMALL,
   },
   watchButtonText: {
     color: COLORS.TEXT_DARK,

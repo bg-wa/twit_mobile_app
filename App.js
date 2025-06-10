@@ -71,11 +71,17 @@ const ShowsStack = () => (
     screenOptions={{
       headerStyle: {
         backgroundColor: COLORS.PRIMARY,
-        height: 56, // Reduce the header height
+        height: 48, // Reduce header height from 56 to 48
       },
       headerTitleAlign: 'center', // Center the title
       headerTintColor: COLORS.TEXT_LIGHT,
       headerBackTitle: 'Back',
+      headerTitleStyle: {
+        fontSize: 18, // Slightly smaller font size
+      },
+      contentStyle: {
+        paddingTop: 0, // Remove any top padding in the content
+      },
     }}
   >
     <Stack.Screen 
