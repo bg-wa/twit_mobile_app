@@ -183,17 +183,8 @@ const PersonDetailScreen = ({ route, navigation }) => {
   const renderEpisodeItem = ({ item }) => {
     // Extract image URL
     const imageUrl = extractEpisodeImageUrl(item);
-    
-    // Extract video & audio information
-    const hasVideo = 
-      (item.video_hd && item.video_hd.mediaUrl) || 
-      (item.video_large && item.video_large.mediaUrl) || 
-      (item.video_small && item.video_small.mediaUrl) ||
-      item.videoUrl;
-      
-    const hasAudio = 
-      (item.video_audio && item.video_audio.mediaUrl) ||
-      item.audioUrl;
+    const hasVideo = item.video_hd || item.video_large || item.video_small;
+    const hasAudio = item.video_audio;
     
     // Get running time from the first available source
     const runningTime = 
@@ -223,37 +214,36 @@ const PersonDetailScreen = ({ route, navigation }) => {
           )}
         </View>
         <View style={styles.episodeContent}>
-          <Text style={styles.episodeTitle} numberOfLines={2}>
-            {item.label || 'Untitled Episode'}
-          </Text>
-          
-          {/* Metadata row with date and running time */}
-          <View style={styles.episodeMetaRow}>
-            {item.episodeNumber && (
+          {/* Episode number moved above title */}
+          {item.episodeNumber && (
+            <View style={styles.episodeNumberRow}>
               <View style={styles.episodeNumberBadge}>
                 <Text style={styles.episodeNumberText}>
                   {item.seasonNumber ? `S${item.seasonNumber}:E${item.episodeNumber}` : `EP ${item.episodeNumber}`}
                 </Text>
               </View>
-            )}
-            
+            </View>
+          )}
+          
+          <Text style={styles.episodeTitle} numberOfLines={2}>
+            {item.label || 'Untitled Episode'}
+          </Text>
+          
+          {/* Metadata row with date */}
+          <View style={styles.episodeMetaRow}>
             {item.airingDate && (
-              <Text style={[styles.episodeDate, { marginLeft: 8 }]}>
+              <Text style={[styles.episodeDate, { marginLeft: 0 }]}>
                 {new Date(item.airingDate).toLocaleDateString()}
-              </Text>
-            )}
-            
-            {runningTime && (
-              <Text style={[styles.episodeRunningTime, { marginLeft: 8 }]}>
-                <Ionicons name="time-outline" size={12} color={COLORS.TEXT_SECONDARY} style={styles.metaIcon} />
-                {" "}{runningTime}
+                {runningTime && (
+                  <Text style={styles.episodeRunningTime}>{" • "}{runningTime}</Text>
+                )}
               </Text>
             )}
             
             {/* Show information if available */}
             {item.embedded && item.embedded.shows && item.embedded.shows[0] && (
-              <Text style={[styles.episodeShow, { marginLeft: 8 }]}>
-                {" • "}{stripHtmlAndDecodeEntities(item.embedded.shows[0].label)}
+              <Text style={[styles.episodeShow, { marginLeft: item.airingDate ? 8 : 0 }]}>
+                {item.airingDate ? " • " : ""}{stripHtmlAndDecodeEntities(item.embedded.shows[0].label)}
               </Text>
             )}
           </View>
@@ -695,22 +685,17 @@ const styles = StyleSheet.create({
   episodeRunningTime: {
     fontSize: TYPOGRAPHY.FONT_SIZE.SMALL,
     color: COLORS.TEXT_SECONDARY,
-    marginRight: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
   },
   episodeShow: {
     fontSize: TYPOGRAPHY.FONT_SIZE.SMALL,
     color: COLORS.TEXT_SECONDARY,
     fontStyle: 'italic',
   },
-  metaIcon: {
-    marginRight: 2,
-  },
   episodeDescription: {
     fontSize: TYPOGRAPHY.FONT_SIZE.SMALL,
     color: COLORS.TEXT_MEDIUM,
-    marginTop: 2,
+    marginTop: 8,
+    flex: 1,
   },
   linkButton: {
     flexDirection: 'row',
@@ -743,12 +728,17 @@ const styles = StyleSheet.create({
     color: COLORS.TEXT_LIGHT,
     fontWeight: 'bold',
   },
+  episodeNumberRow: {
+    flexDirection: 'row',
+    marginBottom: 4,
+  },
   episodeNumberBadge: {
-    backgroundColor: COLORS.PRIMARY,
+    backgroundColor: COLORS.CTA,
     paddingHorizontal: 8,
     paddingVertical: 2,
-    borderRadius: 4,
-    marginRight: 8,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   episodeNumberText: {
     color: 'white',

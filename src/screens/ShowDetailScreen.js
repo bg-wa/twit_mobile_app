@@ -144,19 +144,7 @@ const ShowDetailScreen = ({ route, navigation }) => {
       (item.video_large && item.video_large.runningTime) || 
       (item.video_small && item.video_small.runningTime) ||
       (item.video_audio && item.video_audio.runningTime);
-      
-    // Check if this episode has video
-    const hasVideo = 
-      (item.video_hd && item.video_hd.mediaUrl) || 
-      (item.video_large && item.video_large.mediaUrl) || 
-      (item.video_small && item.video_small.mediaUrl) ||
-      item.videoUrl;
-      
-    // Check if this episode has audio
-    const hasAudio = 
-      (item.video_audio && item.video_audio.mediaUrl) ||
-      item.audioUrl;
-      
+    
     return (
       <TouchableOpacity
         style={styles.episodeItem}
@@ -180,27 +168,26 @@ const ShowDetailScreen = ({ route, navigation }) => {
           )}
         </View>
         <View style={styles.episodeInfo}>
-          <Text style={styles.episodeTitle} numberOfLines={2}>{item.label || 'Untitled Episode'}</Text>
-          
-          <View style={styles.episodeMetaRow}>
-            {item.episodeNumber && (
+          {/* Episode number moved above title */}
+          {item.episodeNumber && (
+            <View style={styles.episodeNumberRow}>
               <View style={styles.episodeNumberBadge}>
                 <Text style={styles.episodeNumberText}>
                   {item.seasonNumber ? `S${item.seasonNumber}:E${item.episodeNumber}` : `EP ${item.episodeNumber}`}
                 </Text>
               </View>
-            )}
-            
+            </View>
+          )}
+          
+          <Text style={styles.episodeTitle} numberOfLines={2}>{item.label || 'Untitled Episode'}</Text>
+          
+          <View style={styles.episodeMetaRow}>
             {item.airingDate && (
-              <Text style={[styles.episodeDate, { marginLeft: 8 }]}>
+              <Text style={[styles.episodeDate, { marginLeft: 0 }]}>
                 {new Date(item.airingDate).toLocaleDateString()}
-              </Text>
-            )}
-            
-            {runningTime && (
-              <Text style={[styles.episodeRunningTime, { marginLeft: 8 }]}>
-                <Ionicons name="time-outline" size={12} color={COLORS.TEXT_SECONDARY} style={styles.metaIcon} />
-                {" "}{runningTime}
+                {runningTime && (
+                  <Text style={styles.episodeRunningTime}>{" • "}{runningTime}</Text>
+                )}
               </Text>
             )}
           </View>
@@ -441,23 +428,28 @@ const styles = StyleSheet.create({
     color: COLORS.TEXT_DARK,
     marginBottom: SPACING.SMALL / 2,
   },
-  episodeMetaRow: {
+  episodeNumberRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 4,
-    flexWrap: 'wrap',
+    marginBottom: 4,
   },
   episodeNumberBadge: {
-    backgroundColor: COLORS.PRIMARY,
+    backgroundColor: COLORS.CTA,
     paddingHorizontal: 8,
     paddingVertical: 2,
-    borderRadius: 4,
-    marginRight: 8,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   episodeNumberText: {
     color: 'white',
     fontSize: 12,
     fontWeight: 'bold',
+  },
+  episodeMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+    flexWrap: 'wrap',
   },
   episodeDate: {
     color: COLORS.TEXT_SECONDARY,
@@ -465,14 +457,13 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   episodeRunningTime: {
-    color: COLORS.TEXT_SECONDARY,
     fontSize: 12,
-    marginRight: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
+    color: COLORS.TEXT_SECONDARY,
   },
-  metaIcon: {
-    marginRight: 2,
+  episodeDescription: {
+    fontSize: 13,
+    color: COLORS.TEXT_MEDIUM,
+    marginTop: 8,
   },
   loadingContainer: {
     flex: 1,
