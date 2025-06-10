@@ -7,11 +7,13 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Linking,
-  Image
+  Image,
+  Alert
 } from 'react-native';
 import apiService from '../services/api';
 import { COLORS, SPACING, TYPOGRAPHY } from '../utils/theme';
 import { stripHtmlAndDecodeEntities } from '../utils/textUtils';
+import { openStreamInApp } from '../utils/streamUtils';
 
 const StreamsScreen = () => {
   const [streams, setStreams] = useState([]);
@@ -42,11 +44,24 @@ const StreamsScreen = () => {
     }
   };
 
-  const handleOpenStream = (url) => {
-    if (url) {
-      Linking.openURL(url).catch(err => {
-        console.error('Error opening stream URL:', err);
-      });
+  const handleOpenStream = async (stream) => {
+    if (stream && stream.streamSource) {
+      try {
+        await openStreamInApp(stream);
+      } catch (err) {
+        console.error('Error opening stream:', err);
+        Alert.alert(
+          'Stream Error',
+          'Unable to open this stream. Please try a different stream or check your connection.',
+          [{ text: 'OK' }]
+        );
+      }
+    } else {
+      Alert.alert(
+        'Stream Error',
+        'This stream URL is not available.',
+        [{ text: 'OK' }]
+      );
     }
   };
 
@@ -60,7 +75,7 @@ const StreamsScreen = () => {
         />
       )}
       <View style={styles.streamInfo}>
-        <Text style={styles.streamTitle}>{item.label || 'Unknown Stream'}</Text>
+        <Text style={styles.streamTitle}>{stripHtmlAndDecodeEntities(item.label) || 'Unknown Stream'}</Text>
         {item.description && (
           <Text style={styles.streamDescription} numberOfLines={2}>
             {stripHtmlAndDecodeEntities(item.description)}
@@ -70,13 +85,20 @@ const StreamsScreen = () => {
           <Text style={styles.streamType}>
             {item.streamType === 'video' ? '📹 Video' : '🎧 Audio'}
           </Text>
+          {item.streamProviders && (
+            <Text style={styles.providerLabel}>
+              {stripHtmlAndDecodeEntities(item.streamProviders.label)}
+            </Text>
+          )}
           {item.streamPreferred && (
-            <Text style={styles.preferredBadge}>Preferred</Text>
+            <View style={styles.preferredBadge}>
+              <Text style={styles.preferredBadgeText}>Preferred</Text>
+            </View>
           )}
         </View>
         <TouchableOpacity
           style={styles.watchButton}
-          onPress={() => handleOpenStream(item.streamUrl)}
+          onPress={() => handleOpenStream(item)}
         >
           <Text style={styles.watchButtonText}>
             {item.streamType === 'video' ? 'Watch Stream' : 'Listen to Stream'}
@@ -174,20 +196,34 @@ const styles = StyleSheet.create({
   streamTypeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: SPACING.MEDIUM,
+    flexWrap: 'wrap',
+    marginBottom: SPACING.SMALL
   },
   streamType: {
     fontSize: TYPOGRAPHY.FONT_SIZE.MEDIUM,
     color: COLORS.TEXT_MEDIUM,
     marginRight: SPACING.SMALL,
   },
-  preferredBadge: {
-    backgroundColor: COLORS.SUCCESS,
-    color: COLORS.TEXT_LIGHT,
+  providerLabel: {
     fontSize: TYPOGRAPHY.FONT_SIZE.SMALL,
-    paddingVertical: 2,
+    color: COLORS.TEXT_MEDIUM,
+    marginLeft: SPACING.SMALL,
+    backgroundColor: COLORS.BORDER,
     paddingHorizontal: 8,
-    borderRadius: 12,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  preferredBadge: {
+    backgroundColor: COLORS.CTA,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginLeft: SPACING.SMALL,
+  },
+  preferredBadgeText: {
+    color: COLORS.TEXT_DARK,
+    fontWeight: 'bold',
+    fontSize: TYPOGRAPHY.FONT_SIZE.SMALL,
   },
   watchButton: {
     backgroundColor: COLORS.CTA,
