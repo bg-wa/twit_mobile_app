@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   TextInput,
@@ -10,12 +10,48 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../utils/theme';
 
 /**
- * A reusable search bar component
+ * A reusable search bar component with debounced input
  */
-const SearchBar = ({ onSearch, placeholder = 'Search...' }) => {
+const SearchBar = ({ onSearch, placeholder = 'Search...', debounceTime = 500 }) => {
   const [searchText, setSearchText] = useState('');
+  const debounceTimeout = useRef(null);
+
+  // Clear the timeout on component unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimeout.current) {
+        clearTimeout(debounceTimeout.current);
+      }
+    };
+  }, []);
+
+  const handleTextChange = (text) => {
+    setSearchText(text);
+    
+    // Clear any existing timeout
+    if (debounceTimeout.current) {
+      clearTimeout(debounceTimeout.current);
+    }
+    
+    // If text is empty, trigger search immediately
+    if (!text.trim()) {
+      onSearch('');
+      return;
+    }
+    
+    // Set a new timeout for the debounced search
+    debounceTimeout.current = setTimeout(() => {
+      if (onSearch && text.trim()) {
+        onSearch(text.trim());
+      }
+    }, debounceTime);
+  };
 
   const handleSearch = () => {
+    if (debounceTimeout.current) {
+      clearTimeout(debounceTimeout.current);
+    }
+    
     if (onSearch && searchText.trim()) {
       onSearch(searchText.trim());
     }
@@ -31,11 +67,12 @@ const SearchBar = ({ onSearch, placeholder = 'Search...' }) => {
   return (
     <View style={styles.container}>
       <View style={styles.searchContainer}>
+        <Ionicons name="search" size={20} color="#999" style={styles.searchIcon} />
         <TextInput
           style={styles.input}
           placeholder={placeholder}
           value={searchText}
-          onChangeText={setSearchText}
+          onChangeText={handleTextChange}
           onSubmitEditing={handleSearch}
           returnKeyType="search"
           clearButtonMode="while-editing"
@@ -78,6 +115,9 @@ const styles = StyleSheet.create({
         elevation: 2,
       },
     }),
+  },
+  searchIcon: {
+    marginRight: 8,
   },
   input: {
     flex: 1,

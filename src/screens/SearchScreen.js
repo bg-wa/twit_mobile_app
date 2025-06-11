@@ -37,14 +37,49 @@ const SearchScreen = ({ navigation }) => {
     setError(null);
 
     try {
-      // Search shows by label (title)
-      const showsPromise = apiService.getShows({ 'filter[label]': query });
+      // Build more comprehensive search params
+      const searchParams = {
+        // Support both label and description search
+        'or[0][filter][label][operator]': 'CONTAINS',
+        'or[0][filter][label][value]': query,
+        'or[1][filter][description][operator]': 'CONTAINS',
+        'or[1][filter][description][value]': query,
+        // Include nested data for better display
+        'embed': 'shows,people',
+        'limit': 20
+      };
+
+      // Search shows with content searching
+      const showsPromise = apiService.getShows({
+        'or[0][filter][label][operator]': 'CONTAINS',
+        'or[0][filter][label][value]': query,
+        'or[1][filter][description][operator]': 'CONTAINS',
+        'or[1][filter][description][value]': query,
+        'limit': 15
+      });
       
-      // Search episodes by label (title)
-      const episodesPromise = apiService.getEpisodes({ 'filter[label]': query });
+      // Search episodes with content searching
+      const episodesPromise = apiService.getEpisodes({
+        'or[0][filter][label][operator]': 'CONTAINS',
+        'or[0][filter][label][value]': query,
+        'or[1][filter][description][operator]': 'CONTAINS',
+        'or[1][filter][description][value]': query,
+        'or[2][filter][teaser][operator]': 'CONTAINS',
+        'or[2][filter][teaser][value]': query,
+        'embed': 'shows',
+        'limit': 15
+      });
       
-      // Search people by label (name)
-      const peoplePromise = apiService.getPeople({ 'filter[label]': query });
+      // Search people by name (label) and bio (description)
+      const peoplePromise = apiService.getPeople({
+        'or[0][filter][label][operator]': 'CONTAINS',
+        'or[0][filter][label][value]': query,
+        'or[1][filter][description][operator]': 'CONTAINS',
+        'or[1][filter][description][value]': query,
+        'or[2][filter][shortBio][operator]': 'CONTAINS', 
+        'or[2][filter][shortBio][value]': query,
+        'limit': 15
+      });
 
       // Wait for all requests to complete
       const [shows, episodes, people] = await Promise.all([
@@ -52,6 +87,8 @@ const SearchScreen = ({ navigation }) => {
         episodesPromise,
         peoplePromise
       ]);
+
+      console.log(`Search results - Shows: ${shows?.length || 0}, Episodes: ${episodes?.length || 0}, People: ${people?.length || 0}`);
 
       setSearchResults({
         shows: shows || [],
@@ -76,24 +113,66 @@ const SearchScreen = ({ navigation }) => {
     />
   );
 
-  const renderEpisodeItem = ({ item }) => (
-    <EpisodeItem 
-      episode={item} 
-      onPress={() => navigation.navigate('EpisodeDetail', { 
-        id: item.id, 
-        title: item.label || 'Episode Details'
-      })}
-    />
-  );
+  const renderEpisodeItem = ({ item }) => {
+    // Try to extract show ID from embedded data or directly from the item
+    let showId = null;
+    let showName = null;
+    
+    // Extract from embedded data
+    if (item._embedded && item._embedded.shows) {
+      const showData = item._embedded.shows;
+      if (Array.isArray(showData) && showData.length > 0) {
+        showId = showData[0].id;
+        showName = showData[0].label || showData[0].title;
+      } else if (typeof showData === 'object' && showData.id) {
+        showId = showData.id;
+        showName = showData.label || showData.title;
+      }
+    }
+    
+    // Try alternate embedded notation
+    if (!showId && item.embedded && item.embedded.shows) {
+      const showData = item.embedded.shows;
+      if (Array.isArray(showData) && showData.length > 0) {
+        showId = showData[0].id;
+        showName = showData[0].label || showData[0].title;
+      } else if (typeof showData === 'object' && showData.id) {
+        showId = showData.id;
+        showName = showData.label || showData.title;
+      }
+    }
+    
+    // Try direct show reference
+    if (!showId && item.show && item.show.id) {
+      showId = item.show.id;
+      showName = item.show.label;
+    }
+    
+    console.log(`Episode ${item.id}: ${item.label} - Show ID: ${showId}, Show Name: ${showName}`);
+    
+    return (
+      <EpisodeItem 
+        episode={item} 
+        onPress={() => navigation.navigate('EpisodeDetail', { 
+          id: item.id, 
+          title: item.label || 'Episode Details',
+          showId: showId,
+          // Pass along any embedded data to avoid refetching
+          initialEpisodeData: item
+        })}
+      />
+    );
+  };
 
   const renderPersonItem = ({ item }) => (
     <TouchableOpacity
       style={styles.personItem}
       onPress={() => {
-        // Navigate to person detail or show episodes with this person
-        navigation.navigate('Episodes', { 
-          filter: { 'filter[people]': item.id },
-          title: `Episodes with ${item.label}`
+        // Navigate to the PersonDetail screen instead of Episodes
+        navigation.navigate('PersonDetail', { 
+          id: item.id, 
+          name: item.label || 'Person Details',
+          personData: item
         });
       }}
     >
