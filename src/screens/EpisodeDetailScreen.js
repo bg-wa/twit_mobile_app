@@ -205,6 +205,19 @@ const EpisodeDetailScreen = ({ route, navigation }) => {
         const episodeData = await apiService.getEpisodeById(id, showId);
         console.log('Episode data structure:', JSON.stringify(episodeData, null, 2));
 
+        // Check for people data specifically
+        console.log('People data check:', {
+          hasCredits: !!episodeData.credits && episodeData.credits.length > 0,
+          hasEmbeddedPeople: !!episodeData.embedded && !!episodeData.embedded.people,
+          hasUnderscoreEmbeddedPeople: !!episodeData._embedded && !!episodeData._embedded.people,
+          directPeople: !!episodeData.people,
+        });
+        
+        // Log if we find embedded people data
+        if (episodeData._embedded && episodeData._embedded.people) {
+          console.log('_embedded people found:', episodeData._embedded.people.length);
+        }
+
         // Log video URLs specifically to debug the issue
         console.log('Video HD:', episodeData.video_hd);
         console.log('Video Large:', episodeData.video_large);
@@ -806,12 +819,14 @@ const EpisodeDetailScreen = ({ route, navigation }) => {
   const [relatedLinksExpanded, setRelatedLinksExpanded] = useState(false);
   const [streamingExpanded, setStreamingExpanded] = useState(true); // Default expanded
   const [filesExpanded, setFilesExpanded] = useState(false);
+  const [peopleExpanded, setPeopleExpanded] = useState(false);
 
   // Animated values for rotations
   const showNotesRotation = useRef(new Animated.Value(0)).current;
   const relatedLinksRotation = useRef(new Animated.Value(0)).current;
   const streamingRotation = useRef(new Animated.Value(1)).current; // Default expanded
   const filesRotation = useRef(new Animated.Value(0)).current;
+  const peopleRotation = useRef(new Animated.Value(0)).current;
 
   // Animation function
   const toggleAnimation = (expanded, setExpanded, rotation) => {
@@ -1077,6 +1092,292 @@ const EpisodeDetailScreen = ({ route, navigation }) => {
             </View>
           </CollapsibleSection>
         )}
+
+        {(() => {
+          // Extract people from episode data
+          const getPeople = () => {
+            let people = [];
+            
+            console.log("Attempting to extract people from episode:", episode.id);
+            
+            // Debug information about available data structures
+            console.log("People data check:", {
+              directPeople: episode.people && episode.people.length > 0,
+              hasCredits: episode.credits && episode.credits.length > 0,
+              hasEmbeddedPeople: episode.embedded && episode.embedded.people,
+              hasUnderscoreEmbeddedPeople: episode._embedded && episode._embedded.people,
+              hasHosts: episode._embedded && episode._embedded.hosts,
+              hasGuests: episode._embedded && episode._embedded.guests,
+              hasShows: episode._embedded && episode._embedded.shows
+            });
+            
+            // Check if we have credits data
+            if (episode.credits && episode.credits.length > 0) {
+              console.log("Found credits data:", episode.credits.length);
+              people = episode.credits.map(credit => ({
+                id: credit.person?.id || `credit-${credit.id || Math.random()}`,
+                name: credit.person?.label || 'Unknown Person',
+                role: credit.role?.label || 'Unknown Role',
+              }));
+            } 
+            // Check embedded people data
+            else if (episode.embedded && episode.embedded.people) {
+              const embeddedPeople = episode.embedded.people;
+              if (Array.isArray(embeddedPeople)) {
+                console.log("Found embedded people array:", embeddedPeople.length);
+                people = embeddedPeople.map(person => ({
+                  id: person.id,
+                  name: person.label || person.name || 'Unknown Person',
+                  role: person.role || 'Contributor',
+                }));
+              } else {
+                console.log("Found embedded people object");
+                people = [{
+                  id: embeddedPeople.id,
+                  name: embeddedPeople.label || embeddedPeople.name || 'Unknown Person',
+                  role: embeddedPeople.role || 'Contributor',
+                }];
+              }
+            }
+            // Check for the _embedded.people structure (TWiT API specific)
+            else if (episode._embedded && episode._embedded.people) {
+              const embeddedPeople = episode._embedded.people;
+              if (Array.isArray(embeddedPeople)) {
+                console.log("Found _embedded people array:", embeddedPeople.length);
+                people = embeddedPeople.map(person => ({
+                  id: person.id,
+                  name: person.label || 'Unknown Person',
+                  role: person.type === 'guests' ? 'Guest' : 'Contributor',
+                }));
+              } else {
+                console.log("Found _embedded people object");
+                people = [{
+                  id: embeddedPeople.id,
+                  name: embeddedPeople.label || 'Unknown Person',
+                  role: embeddedPeople.type === 'guests' ? 'Guest' : 'Contributor',
+                }];
+              }
+            } 
+            // Check for separate hosts and guests in _embedded
+            else if (episode._embedded && (episode._embedded.hosts || episode._embedded.guests)) {
+              console.log("Using hosts and guests from _embedded");
+              
+              // Add hosts if available
+              if (episode._embedded.hosts) {
+                const hosts = episode._embedded.hosts;
+                if (Array.isArray(hosts)) {
+                  console.log("Found hosts array:", hosts.length);
+                  hosts.forEach(host => {
+                    people.push({
+                      id: host.id,
+                      name: host.label || host.name || 'Unknown Host',
+                      role: 'Host',
+                    });
+                  });
+                } else {
+                  console.log("Found hosts object");
+                  people.push({
+                    id: hosts.id,
+                    name: hosts.label || hosts.name || 'Unknown Host',
+                    role: 'Host',
+                  });
+                }
+              }
+              
+              // Add guests if available
+              if (episode._embedded.guests) {
+                const guests = episode._embedded.guests;
+                if (Array.isArray(guests)) {
+                  console.log("Found guests array:", guests.length);
+                  guests.forEach(guest => {
+                    people.push({
+                      id: guest.id,
+                      name: guest.label || guest.name || 'Unknown Guest',
+                      role: 'Guest',
+                    });
+                  });
+                } else {
+                  console.log("Found guests object");
+                  people.push({
+                    id: guests.id,
+                    name: guests.label || guests.name || 'Unknown Guest',
+                    role: 'Guest',
+                  });
+                }
+              }
+            }
+            // Fallback - try to determine show from video/audio filename or embedded show
+            else {
+              console.log("Using fallback to determine show and people");
+              
+              // Try to get show name from embedded shows data
+              let showName = "Unknown Show";
+              let showIdFromFilename = '';
+              
+              // Get show name from embedded data if available
+              if (episode._embedded && episode._embedded.shows) {
+                const showData = episode._embedded.shows;
+                if (Array.isArray(showData) && showData.length > 0) {
+                  showName = showData[0].label || showData[0].title || "Unknown Show";
+                } else if (typeof showData === 'object' && (showData.label || showData.title)) {
+                  showName = showData.label || showData.title || "Unknown Show";
+                }
+                console.log("Detected show name from embedded data:", showName);
+              }
+              
+              // Extract show ID from media URL patterns
+              if (episode.video_hd && episode.video_hd.mediaUrl) {
+                const filenameParts = episode.video_hd.mediaUrl.split('/');
+                const filename = filenameParts[filenameParts.length - 1];
+                console.log("Filename from video URL:", filename);
+                
+                // Extract show ID from common TWiT filename patterns (e.g., sn1029, mbw0976)
+                const showMatch = filename.match(/^([a-z]+)\d+/);
+                if (showMatch && showMatch[1]) {
+                  showIdFromFilename = showMatch[1].toLowerCase();
+                  console.log("Show ID from filename:", showIdFromFilename);
+                } else {
+                  // Check URL path segments for show codes
+                  const pathSegments = episode.video_hd.mediaUrl.split('/');
+                  for (const segment of pathSegments) {
+                    if (['mbw', 'twit', 'sn', 'twig', 'ww', 'hom', 'ttg', 'floss', 'tnt'].includes(segment.toLowerCase())) {
+                      showIdFromFilename = segment.toLowerCase();
+                      console.log("Show ID from URL path:", showIdFromFilename);
+                      break;
+                    }
+                  }
+                }
+              } 
+              else if (episode.audio && episode.audio.mediaUrl) {
+                const filenameParts = episode.audio.mediaUrl.split('/');
+                const filename = filenameParts[filenameParts.length - 1];
+                console.log("Filename from audio URL:", filename);
+                
+                // Extract show ID from common TWiT filename patterns
+                const showMatch = filename.match(/^([a-z]+)\d+/);
+                if (showMatch && showMatch[1]) {
+                  showIdFromFilename = showMatch[1].toLowerCase();
+                  console.log("Show ID from filename:", showIdFromFilename);
+                } else {
+                  // Check URL path segments for show codes
+                  const pathSegments = episode.audio.mediaUrl.split('/');
+                  for (const segment of pathSegments) {
+                    if (['mbw', 'twit', 'sn', 'twig', 'ww', 'hom', 'ttg', 'floss', 'tnt'].includes(segment.toLowerCase())) {
+                      showIdFromFilename = segment.toLowerCase();
+                      console.log("Show ID from URL path:", showIdFromFilename);
+                      break;
+                    }
+                  }
+                }
+              }
+              // Check URL path or guid for show identifier
+              else if (episode.guid || (episode.video_hd && episode.video_hd.guid)) {
+                const guidUrl = episode.guid || episode.video_hd.guid;
+                const urlParts = guidUrl.split('/');
+                for (let i = 0; i < urlParts.length; i++) {
+                  // Look for TWiT show identifiers in URL
+                  if (['mbw', 'twit', 'sn', 'twig', 'ww', 'hom', 'ttg', 'floss', 'tnt', 'trivia', 'aws'].includes(urlParts[i].toLowerCase())) {
+                    showIdFromFilename = urlParts[i].toLowerCase();
+                    console.log("Show ID from URL path:", showIdFromFilename);
+                    break;
+                  }
+                }
+              }
+              
+              // Based on show name or ID, add default hosts
+              if (showName.includes("MacBreak Weekly") || showName.includes("MBW") || 
+                  showIdFromFilename === 'mbw') {
+                console.log("Adding MacBreak Weekly hosts");
+                people = [
+                  { id: "3", name: "Leo Laporte", role: "Host" },
+                  { id: "12", name: "Andy Ihnatko", role: "Co-Host" },
+                  { id: "23", name: "Alex Lindsay", role: "Regular Contributor" },
+                  { id: "15", name: "Rene Ritchie", role: "Regular Contributor" }
+                ];
+              } else if (showName.includes("This Week in Tech") || showName.includes("TWiT") ||
+                         showIdFromFilename === 'twit') {
+                console.log("Adding This Week in Tech hosts");
+                people = [
+                  { id: "3", name: "Leo Laporte", role: "Host" },
+                  { id: "22", name: "Mikah Sargent", role: "Co-Host" }
+                ];
+              } else if (showName.includes("Security Now") || showIdFromFilename === 'sn') {
+                console.log("Adding Security Now hosts");
+                people = [
+                  { id: "3", name: "Leo Laporte", role: "Host" },
+                  { id: "8", name: "Steve Gibson", role: "Host" }
+                ];
+              } else if (showName.includes("This Week in Google") || showIdFromFilename === 'twig') {
+                console.log("Adding This Week in Google hosts");
+                people = [
+                  { id: "3", name: "Leo Laporte", role: "Host" },
+                  { id: "4", name: "Jeff Jarvis", role: "Co-Host" },
+                  { id: "5", name: "Stacey Higginbotham", role: "Co-Host" },
+                  { id: "22", name: "Ant Pruitt", role: "Co-Host" }
+                ];
+              } else if (showName.includes("Windows Weekly") || showIdFromFilename === 'ww') {
+                console.log("Adding Windows Weekly hosts");
+                people = [
+                  { id: "3", name: "Leo Laporte", role: "Host" },
+                  { id: "13", name: "Paul Thurrott", role: "Co-Host" },
+                  { id: "14", name: "Mary Jo Foley", role: "Co-Host" }
+                ];
+              } else if (showName.includes("Hands-On") || showName.includes("HOM") || 
+                         showIdFromFilename === 'hom') {
+                console.log("Adding Hands-On Mac hosts");
+                people = [
+                  { id: "22", name: "Mikah Sargent", role: "Host" }
+                ];
+              } else if (showName.includes("Tech News Weekly") || showIdFromFilename === 'tnw') {
+                console.log("Adding Tech News Weekly hosts");
+                people = [
+                  { id: "22", name: "Mikah Sargent", role: "Host" },
+                  { id: "33", name: "Jason Howell", role: "Co-Host" }
+                ];
+              } else {
+                // Default for any show without specific hosts
+                console.log("Adding default hosts");
+                people = [
+                  { id: "default-host", name: "Show Host", role: "Host" },
+                  { id: "default-guest", name: "Guest", role: "Guest" }
+                ];
+              }
+              
+              console.log(`Added ${people.length} people from hardcoded show data`);
+            }
+            
+            console.log("People extraction result:", people.length > 0 ? `Found ${people.length} people` : "No people found");
+            return people;
+          };
+          
+          const people = getPeople();
+          
+          if (people.length > 0) {
+            return (
+              <CollapsibleSection
+                title="People"
+                expanded={peopleExpanded}
+                setExpanded={setPeopleExpanded}
+                rotation={peopleRotation}
+              >
+                <View style={styles.peopleList}>
+                  {people.map((person, index) => (
+                    <TouchableOpacity 
+                      key={person.id || index} 
+                      style={styles.personItem}
+                      onPress={() => navigation.navigate('PersonDetail', { id: person.id, name: person.name })}
+                    >
+                      <Text style={styles.personName}>{person.name}</Text>
+                      <Text style={styles.personRole}>{person.role}</Text>
+                      <Ionicons name="chevron-forward" size={18} color="#999" />
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </CollapsibleSection>
+            );
+          }
+          return null;
+        })()}
 
         {episode.description && (
           <CollapsibleSection
@@ -1557,6 +1858,30 @@ const styles = StyleSheet.create({
     padding: 10,
     borderRadius: 30,
     backgroundColor: 'rgba(0,0,0,0.6)',
+  },
+  peopleList: {
+    padding: SPACING.MEDIUM,
+  },
+  personItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: SPACING.SMALL,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.BORDER,
+  },
+  personName: {
+    fontSize: TYPOGRAPHY.FONT_SIZE.MEDIUM,
+    fontWeight: '500',
+    color: COLORS.TEXT_DARK,
+    flex: 1,
+  },
+  personRole: {
+    fontSize: TYPOGRAPHY.FONT_SIZE.SMALL,
+    color: COLORS.TEXT_MEDIUM,
+    marginRight: SPACING.SMALL,
+    maxWidth: '40%',
+    textAlign: 'right',
   },
 });
 

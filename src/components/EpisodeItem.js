@@ -7,11 +7,30 @@ import {
   Image 
 } from 'react-native';
 import { formatDate } from '../utils/apiHelpers';
+import { stripHtmlAndDecodeEntities } from '../utils/textUtils';
 
 /**
  * A reusable component for displaying an episode item in a list
  */
 const EpisodeItem = ({ episode, onPress }) => {
+  // Extract show name from embedded data if available
+  const getShowName = () => {
+    if (episode.embedded && episode.embedded.shows && episode.embedded.shows[0]) {
+      return stripHtmlAndDecodeEntities(episode.embedded.shows[0].label);
+    }
+    // Fallback if show is directly attached to the episode
+    if (episode.show && episode.show.label) {
+      return stripHtmlAndDecodeEntities(episode.show.label);
+    }
+    // Second fallback if showId is provided but not the full object
+    if (episode.showId) {
+      return "Show #" + episode.showId;
+    }
+    return null;
+  };
+  
+  const showName = getShowName();
+  
   return (
     <TouchableOpacity
       style={styles.episodeItem}
@@ -25,6 +44,9 @@ const EpisodeItem = ({ episode, onPress }) => {
         />
       )}
       <View style={styles.episodeInfo}>
+        {showName && (
+          <Text style={styles.showName}>{showName}</Text>
+        )}
         <Text style={styles.episodeTitle}>{episode.label || 'Unknown Episode'}</Text>
         {episode.airingDate && (
           <Text style={styles.episodeDate}>
@@ -61,6 +83,13 @@ const styles = StyleSheet.create({
   episodeInfo: {
     flex: 1,
     padding: 12,
+  },
+  showName: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#007AFF',
+    marginBottom: 2,
+    textTransform: 'uppercase',
   },
   episodeTitle: {
     fontSize: 16,

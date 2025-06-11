@@ -146,9 +146,34 @@ const apiService = {
       const online = await cacheManager.isOnline();
       
       if (online) {
-        const response = await api.get(`/episodes/${id}`);
-        // Extract just the episode object from response.data.episodes
+        // Request multiple embedded entities using comma separated list
+        const response = await api.get(`/episodes/${id}?embed=people,hosts,guests,shows`);
         const episodeData = response.data.episodes || {};
+        
+        // If the episode is part of a show but doesn't have people directly, get show hosts/guests
+        if ((!episodeData._embedded || !episodeData._embedded.people) && episodeData._embedded && episodeData._embedded.shows) {
+          try {
+            // Get the first show ID
+            const showId = episodeData._embedded.shows[0]?.id;
+            if (showId) {
+              const showResponse = await api.get(`/shows/${showId}?embed=hosts,people`);
+              const showData = showResponse.data.shows || {};
+              
+              // Add show hosts/people to episode data if available
+              if (showData._embedded && (showData._embedded.hosts || showData._embedded.people)) {
+                if (!episodeData._embedded) episodeData._embedded = {};
+                episodeData._embedded.people = [
+                  ...(showData._embedded.hosts || []),
+                  ...(showData._embedded.people || [])
+                ];
+                console.log(`Added ${episodeData._embedded.people.length} people from show data`);
+              }
+            }
+          } catch (showError) {
+            console.warn('Error getting show hosts:', showError);
+          }
+        }
+        
         await cacheManager.saveToCache(cacheKey, episodeData);
         return episodeData;
       } else {
