@@ -987,6 +987,69 @@ const EpisodeDetailScreen = ({ route, navigation }) => {
       <View style={styles.contentContainer}>
         <Text style={styles.episodeTitle}>{episode.label || title || 'Unknown Episode'}</Text>
 
+        {/* Extract and show the show name */}
+        {(() => {
+          // Extract show name from available data
+          const getShowName = () => {
+            // First check for embedded shows data
+            if (episode._embedded && episode._embedded.shows) {
+              const showData = episode._embedded.shows;
+              if (Array.isArray(showData) && showData.length > 0) {
+                return showData[0].label || showData[0].title;
+              } else if (typeof showData === 'object' && (showData.label || showData.title)) {
+                return showData.label || showData.title;
+              }
+            }
+            
+            // Try with embedded (dot notation)
+            if (episode.embedded && episode.embedded.shows) {
+              const showData = episode.embedded.shows;
+              if (Array.isArray(showData) && showData.length > 0) {
+                return showData[0].label || showData[0].title;
+              } else if (typeof showData === 'object' && (showData.label || showData.title)) {
+                return showData.label || showData.title;
+              }
+            }
+
+            // Check if show is directly attached to episode
+            if (episode.show && episode.show.label) {
+              return episode.show.label;
+            }
+            
+            // Try to get show info from media URL if available
+            if (episode.video_hd && episode.video_hd.mediaUrl) {
+              const filenameParts = episode.video_hd.mediaUrl.split('/');
+              const filename = filenameParts[filenameParts.length - 1];
+              const showMatch = filename.match(/^([a-z]+)\d+/);
+              
+              if (showMatch && showMatch[1]) {
+                const showId = showMatch[1].toLowerCase();
+                const showNames = {
+                  'mbw': 'MacBreak Weekly',
+                  'twit': 'This Week in Tech',
+                  'sn': 'Security Now',
+                  'twig': 'This Week in Google',
+                  'ww': 'Windows Weekly',
+                  'hom': 'Hands-On Mac',
+                  'tnw': 'Tech News Weekly',
+                  'floss': 'FLOSS Weekly',
+                  'tnt': 'Tech News Today'
+                };
+                
+                return showNames[showId] || null;
+              }
+            }
+            
+            return null;
+          };
+          
+          const showName = getShowName();
+          if (showName) {
+            return <Text style={styles.showName}>{showName}</Text>;
+          }
+          return null;
+        })()}
+
         <View style={styles.metadataContainer}>
           {episode.episodeNumber && (
             <View style={styles.episodeNumberBadge}>
@@ -1210,7 +1273,7 @@ const EpisodeDetailScreen = ({ route, navigation }) => {
             else {
               console.log("Using fallback to determine show and people");
               
-              // Try to get show name from embedded shows data
+              // Try to get show name from embedded data if available
               let showName = "Unknown Show";
               let showIdFromFilename = '';
               
@@ -1491,10 +1554,11 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.SMALL,
   },
   showName: {
-    fontSize: TYPOGRAPHY.FONT_SIZE.MEDIUM,
-    fontWeight: '500',
-    color: COLORS.SECONDARY,
-    marginRight: SPACING.SMALL,
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#007AFF',
+    marginBottom: 8,
+    textTransform: 'uppercase',
   },
   episodeNumber: {
     fontSize: TYPOGRAPHY.FONT_SIZE.SMALL,

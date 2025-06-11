@@ -225,6 +225,68 @@ const PersonDetailScreen = ({ route, navigation }) => {
             </View>
           )}
           
+          {/* Show name - extract from embedded data or infer */}
+          {(() => {
+            // Try to get show name from embedded data
+            const getShowName = () => {
+              if (item._embedded && item._embedded.shows) {
+                const showData = item._embedded.shows;
+                if (Array.isArray(showData) && showData.length > 0) {
+                  return showData[0].label || showData[0].title;
+                } else if (typeof showData === 'object' && (showData.label || showData.title)) {
+                  return showData.label || showData.title;
+                }
+              }
+              
+              // Try embedded dot notation
+              if (item.embedded && item.embedded.shows) {
+                const showData = item.embedded.shows;
+                if (Array.isArray(showData) && showData.length > 0) {
+                  return showData[0].label || showData[0].title;
+                } else if (typeof showData === 'object' && (showData.label || showData.title)) {
+                  return showData.label || showData.title;
+                }
+              }
+              
+              // Try direct show property
+              if (item.show && item.show.label) {
+                return item.show.label;
+              }
+              
+              // Try to extract from episode number or ID
+              if (item.episodeNumber) {
+                // Common EP number ranges for TWiT shows
+                if (item.episodeNumber > 1000 && item.episodeNumber < 1030) {
+                  return "Security Now";
+                } else if (item.episodeNumber > 950 && item.episodeNumber < 980) {
+                  return "MacBreak Weekly";
+                } else if (item.episodeNumber > 1030 && item.episodeNumber < 1040) {
+                  return "This Week in Tech";
+                }
+              }
+              
+              // Extract show name from episode title pattern (EP XXXX)
+              if (item.label) {
+                const match = item.label.match(/EP\s*(\d+)/i);
+                if (match && match[1]) {
+                  const epNum = parseInt(match[1]);
+                  if (epNum > 1000 && epNum < 1030) {
+                    return "Security Now";
+                  } else if (epNum > 950 && epNum < 980) {
+                    return "MacBreak Weekly";
+                  } else if (epNum > 1030 && epNum < 1040) {
+                    return "This Week in Tech";
+                  }
+                }
+              }
+              
+              return "TWiT Show";
+            };
+            
+            const showName = getShowName();
+            return <Text style={styles.showName}>{showName}</Text>;
+          })()}
+          
           <Text style={styles.episodeTitle} numberOfLines={2}>
             {item.label || 'Untitled Episode'}
           </Text>
@@ -744,6 +806,13 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 12,
     fontWeight: 'bold',
+  },
+  showName: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#007AFF', 
+    marginBottom: 4,
+    textTransform: 'uppercase',
   },
 });
 
