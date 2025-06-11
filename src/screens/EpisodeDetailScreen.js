@@ -3,24 +3,27 @@ import {
   View,
   Text,
   StyleSheet,
+  TouchableOpacity,
   Image,
   ScrollView,
-  TouchableOpacity,
   ActivityIndicator,
-  Linking,
-  Dimensions,
-  Animated,
-  Platform,
-  Modal,
-  TouchableWithoutFeedback,
   Alert,
+  Dimensions,
+  Platform,
+  Linking,
+  TouchableWithoutFeedback,
+  BackHandler,
+  Animated,
 } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useIsFocused } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import * as ScreenOrientation from 'expo-screen-orientation';
 import Slider from '@react-native-community/slider';
+import * as ScreenOrientation from 'expo-screen-orientation';
 import apiService from '../services/api';
 import playerManager from '../services/playerManager';
+import networkManager from '../services/NetworkManager';
 import { decodeHtmlEntities, stripHtmlAndDecodeEntities } from '../utils/textUtils';
 import { COLORS, SPACING, TYPOGRAPHY } from '../utils/theme';
 
@@ -133,35 +136,64 @@ const EpisodeDetailScreen = ({ route, navigation }) => {
   const [playbackQuality, setPlaybackQuality] = useState('auto');
   const [availableQualities, setAvailableQualities] = useState(['auto', '1080p', '720p', '480p', '360p']);
   const [showQualityOptions, setShowQualityOptions] = useState(false);
+  const [isAudioOnly, setIsAudioOnly] = useState(false);
   const controlsTimeout = useRef(null);
   const scrollViewRef = useRef(null);
   const playerId = useRef(`episode-${id}`).current;
-  const [isAudioOnly, setIsAudioOnly] = useState(false);
   const [playbackPosition, setPlaybackPosition] = useState(0);
   const [playbackDuration, setPlaybackDuration] = useState(100); // Default to 100 to avoid 0 division
 
-  // Player manager static registry - only called once when component mounts
+  // Register player when component mounts
   useEffect(() => {
-    // Register this player with the player manager
-    if (videoRef.current) {
-      playerManager.registerPlayer(playerId, () => {
-        if (videoRef.current) {
-          videoRef.current.pauseAsync().catch(err => {
-            console.error('Error pausing video:', err);
-          });
-        }
-      });
-    }
+    let unsubscribeNetwork;
+    
+    // Register cleanup function for the player
+    const cleanup = () => {
+      if (videoRef.current) {
+        console.log('Unloading video and unregistering player');
+        videoRef.current.unloadAsync().catch(err => {
+          console.error('Error unloading video:', err);
+        });
+        playerManager.unregisterPlayer(playerId);
+      }
+    };
 
-    // Clean up when unmounting
+    // Add network status listener
+    unsubscribeNetwork = networkManager.addListener(handleNetworkChange);
+    
     return () => {
-      playerManager.unregisterPlayer(playerId);
-      ScreenOrientation.unlockAsync();
-      if (controlsTimeout.current) {
-        clearTimeout(controlsTimeout.current);
+      cleanup();
+      if (unsubscribeNetwork) {
+        unsubscribeNetwork();
       }
     };
   }, [playerId]);
+
+  // Handle network status changes
+  const handleNetworkChange = (networkInfo) => {
+    console.log('Network status changed:', networkInfo);
+    
+    // If we're currently playing and network restricts playback, pause the video
+    if (videoRef.current && isPlaying && !networkInfo.canPlayMedia) {
+      videoRef.current.pauseAsync().then(() => {
+        setIsPlaying(false);
+        
+        Alert.alert(
+          'Playback Paused',
+          'Video playback has been paused because cellular data usage is disabled.',
+          [
+            { text: 'OK' },
+            { 
+              text: 'Go to Settings', 
+              onPress: () => navigation.navigate('Settings')
+            }
+          ]
+        );
+      }).catch(err => {
+        console.error('Error pausing video on network change:', err);
+      });
+    }
+  };
 
   // Fetch episode data on component mount
   useEffect(() => {
@@ -261,6 +293,29 @@ const EpisodeDetailScreen = ({ route, navigation }) => {
   const togglePlayPause = async () => {
     try {
       if (videoRef.current) {
+        // Check network connectivity and settings before playing
+        const networkInfo = networkManager.getConnectionInfo();
+        
+        if (!networkInfo.isConnected) {
+          Alert.alert('No Connection', 'You are not connected to the internet.');
+          return;
+        }
+        
+        if (networkInfo.connectionType === 'cellular' && !networkInfo.useCellularData) {
+          Alert.alert(
+            'Cellular Data Restricted',
+            'Video playback over cellular data is disabled. You can enable it in Settings.',
+            [
+              { text: 'Cancel' },
+              { 
+                text: 'Go to Settings', 
+                onPress: () => navigation.navigate('Settings')
+              }
+            ]
+          );
+          return;
+        }
+        
         // Get current status
         const status = await videoRef.current.getStatusAsync();
         

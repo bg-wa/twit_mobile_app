@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -15,22 +15,61 @@ import apiService from '../services/api';
 import { COLORS, SPACING, TYPOGRAPHY } from '../utils/theme';
 import AppIcon from '../components/AppIcon';
 import { Ionicons } from '@expo/vector-icons';
+import settingsManager from '../utils/settings/settingsManager';
+import networkManager from '../services/NetworkManager';
 
 const SettingsScreen = ({ navigation }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [settings, setSettings] = useState({
-    enableOfflineMode: true,
-    enableNotifications: false,
-    enableAutoPlay: true,
-    useCellularData: false,
+    useCellularData: true,
     darkMode: false,
   });
 
-  const toggleSetting = (key) => {
-    setSettings(prevSettings => ({
-      ...prevSettings,
-      [key]: !prevSettings[key]
-    }));
+  // Load settings on component mount
+  useEffect(() => {
+    loadUserSettings();
+  }, []);
+
+  // Load settings from storage
+  const loadUserSettings = async () => {
+    try {
+      setIsLoading(true);
+      const savedSettings = await settingsManager.loadSettings();
+      setSettings(savedSettings);
+    } catch (error) {
+      console.error('Error loading settings:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const toggleSetting = async (key) => {
+    try {
+      const newValue = !settings[key];
+      
+      // Update state
+      setSettings(prevSettings => ({
+        ...prevSettings,
+        [key]: newValue
+      }));
+      
+      // Save to storage and update managers
+      await settingsManager.saveSettings({
+        ...settings,
+        [key]: newValue
+      });
+      
+      // Special handling for cellular data
+      if (key === 'useCellularData') {
+        await networkManager.updateCellularSetting(newValue);
+      }
+    } catch (error) {
+      console.error(`Error toggling ${key} setting:`, error);
+      // Revert state on error
+      setSettings(prevSettings => ({
+        ...prevSettings
+      }));
+    }
   };
 
   const clearCache = async () => {
@@ -87,13 +126,7 @@ const SettingsScreen = ({ navigation }) => {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>General</Text>
-          
-          {renderSettingItem(
-            'Enable Offline Mode',
-            'Cache content for offline viewing',
-            'enableOfflineMode'
-          )}
-          
+
           {renderSettingItem(
             'Dark Mode',
             'Use dark theme throughout the app',
@@ -103,13 +136,7 @@ const SettingsScreen = ({ navigation }) => {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Playback</Text>
-          
-          {renderSettingItem(
-            'Auto-play Videos',
-            'Automatically play videos when opened',
-            'enableAutoPlay'
-          )}
-          
+
           {renderSettingItem(
             'Use Cellular Data',
             'Stream videos using cellular data',
@@ -118,20 +145,10 @@ const SettingsScreen = ({ navigation }) => {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Notifications</Text>
-          
-          {renderSettingItem(
-            'Enable Notifications',
-            'Get notified about new episodes',
-            'enableNotifications'
-          )}
-        </View>
-
-        <View style={styles.section}>
           <Text style={styles.sectionTitle}>Data</Text>
-          
-          <TouchableOpacity 
-            style={styles.button} 
+
+          <TouchableOpacity
+            style={styles.button}
             onPress={clearCache}
             disabled={isLoading}
           >
@@ -145,8 +162,8 @@ const SettingsScreen = ({ navigation }) => {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Diagnostics</Text>
-          <TouchableOpacity 
-            style={[styles.button, styles.diagnosticButton]} 
+          <TouchableOpacity
+            style={[styles.button, styles.diagnosticButton]}
             onPress={() => navigation.navigate('DiagnosticScreen')}
           >
             <Ionicons name="bug" size={20} color="#ffffff" style={styles.buttonIcon} />
@@ -158,7 +175,7 @@ const SettingsScreen = ({ navigation }) => {
           <Text style={styles.sectionTitle}>About</Text>
           <Text style={styles.aboutText}>
             TWiT Mobile App provides access to TWiT.tv shows, episodes, and live streams.
-            This app requires an internet connection and TWiT API credentials to function properly.
+            This app requires an internet connection to function properly.
           </Text>
           <Text style={styles.copyrightText}>
             {new Date().getFullYear()} TWiT.tv
