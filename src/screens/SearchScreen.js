@@ -14,6 +14,7 @@ import ShowItem from '../components/ShowItem';
 import EpisodeItem from '../components/EpisodeItem';
 import ErrorView from '../components/ErrorView';
 import { COLORS, SPACING, TYPOGRAPHY } from '../utils/theme';
+import { stripHtmlAndDecodeEntities } from '../utils/textUtils';
 
 const SearchScreen = ({ navigation }) => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -108,7 +109,7 @@ const SearchScreen = ({ navigation }) => {
       show={item} 
       onPress={() => navigation.navigate('ShowDetail', { 
         id: item.id, 
-        title: item.label || 'Show Details'
+        title: stripHtmlAndDecodeEntities(item.label) || 'Show Details'
       })}
     />
   );
@@ -123,10 +124,10 @@ const SearchScreen = ({ navigation }) => {
       const showData = item._embedded.shows;
       if (Array.isArray(showData) && showData.length > 0) {
         showId = showData[0].id;
-        showName = showData[0].label || showData[0].title;
+        showName = stripHtmlAndDecodeEntities(showData[0].label) || showData[0].title;
       } else if (typeof showData === 'object' && showData.id) {
         showId = showData.id;
-        showName = showData.label || showData.title;
+        showName = stripHtmlAndDecodeEntities(showData.label) || showData.title;
       }
     }
     
@@ -135,27 +136,27 @@ const SearchScreen = ({ navigation }) => {
       const showData = item.embedded.shows;
       if (Array.isArray(showData) && showData.length > 0) {
         showId = showData[0].id;
-        showName = showData[0].label || showData[0].title;
+        showName = stripHtmlAndDecodeEntities(showData[0].label) || showData[0].title;
       } else if (typeof showData === 'object' && showData.id) {
         showId = showData.id;
-        showName = showData.label || showData.title;
+        showName = stripHtmlAndDecodeEntities(showData.label) || showData.title;
       }
     }
     
     // Try direct show reference
     if (!showId && item.show && item.show.id) {
       showId = item.show.id;
-      showName = item.show.label;
+      showName = stripHtmlAndDecodeEntities(item.show.label);
     }
     
-    console.log(`Episode ${item.id}: ${item.label} - Show ID: ${showId}, Show Name: ${showName}`);
+    console.log(`Episode ${item.id}: ${stripHtmlAndDecodeEntities(item.label)} - Show ID: ${showId}, Show Name: ${showName}`);
     
     return (
       <EpisodeItem 
         episode={item} 
         onPress={() => navigation.navigate('EpisodeDetail', { 
           id: item.id, 
-          title: item.label || 'Episode Details',
+          title: stripHtmlAndDecodeEntities(item.label) || 'Episode Details',
           showId: showId,
           // Pass along any embedded data to avoid refetching
           initialEpisodeData: item
@@ -171,13 +172,13 @@ const SearchScreen = ({ navigation }) => {
         // Navigate to the PersonDetail screen instead of Episodes
         navigation.navigate('PersonDetail', { 
           id: item.id, 
-          name: item.label || 'Person Details',
+          name: stripHtmlAndDecodeEntities(item.label) || 'Person Details',
           personData: item
         });
       }}
     >
-      <Text style={styles.personName}>{item.label}</Text>
-      {item.role && <Text style={styles.personRole}>{item.role}</Text>}
+      <Text style={styles.personName}>{stripHtmlAndDecodeEntities(item.label)}</Text>
+      {item.role && <Text style={styles.personRole}>{stripHtmlAndDecodeEntities(item.role)}</Text>}
     </TouchableOpacity>
   );
 

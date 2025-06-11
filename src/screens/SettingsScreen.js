@@ -8,7 +8,8 @@ import {
   Alert,
   ScrollView,
   ActivityIndicator,
-  Platform
+  Platform,
+  Linking
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import apiService from '../services/api';
@@ -101,6 +102,20 @@ const SettingsScreen = ({ navigation }) => {
     );
   };
 
+  const openClubTwit = async () => {
+    const url = 'https://twit.tv/clubtwit';
+    const supported = await Linking.canOpenURL(url);
+    
+    if (supported) {
+      await Linking.openURL(url);
+    } else {
+      Alert.alert(
+        'Error',
+        'Cannot open the link. Please visit twit.tv/clubtwit in your browser.'
+      );
+    }
+  };
+
   const renderSettingItem = (title, description, key) => (
     <View style={styles.settingItem}>
       <View style={styles.settingTextContainer}>
@@ -169,6 +184,20 @@ const SettingsScreen = ({ navigation }) => {
             <Ionicons name="bug" size={20} color="#ffffff" style={styles.buttonIcon} />
             <Text style={styles.diagnosticButtonText}>Open Diagnostics</Text>
           </TouchableOpacity>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Membership</Text>
+          <TouchableOpacity
+            style={[styles.button, styles.clubTwitButton]}
+            onPress={openClubTwit}
+          >
+            <Ionicons name="star" size={20} color="#ffffff" style={styles.buttonIcon} />
+            <Text style={styles.buttonText}>Join Club TWiT</Text>
+          </TouchableOpacity>
+          <Text style={styles.settingDescription}>
+            Support TWiT and get ad-free content, extended editions, and more!
+          </Text>
         </View>
 
         <View style={styles.section}>
@@ -258,6 +287,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     backgroundColor: COLORS.PRIMARY,
+  },
+  clubTwitButton: {
+    backgroundColor: '#FFD700', // Gold color for premium membership
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   buttonIcon: {
     marginRight: SPACING.SMALL,

@@ -101,17 +101,6 @@ const HomeScreen = ({ navigation }) => {
     );
   };
 
-  const renderHeader = () => (
-    <View style={styles.streamsButtonContainer}>
-      <TouchableOpacity
-        style={styles.streamsButton}
-        onPress={() => navigation.navigate('Streams')}
-      >
-        <Text style={styles.streamsButtonText}>Live Streams</Text>
-      </TouchableOpacity>
-    </View>
-  );
-
   if (loading && !refreshing) {
     return (
       <View style={styles.loadingContainer}>
@@ -140,7 +129,6 @@ const HomeScreen = ({ navigation }) => {
         renderItem={renderShowItem}
         keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={styles.showsList}
-        ListHeaderComponent={renderHeader}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
@@ -158,23 +146,9 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.BACKGROUND,
   },
   showsList: {
-    paddingHorizontal: SPACING.MEDIUM,
-    paddingTop: 0,
-  },
-  streamsButtonContainer: {
-    alignItems: 'flex-end',
-    marginVertical: 4,
-    paddingRight: 4,
-  },
-  streamsButton: {
-    backgroundColor: COLORS.SECONDARY,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-  },
-  streamsButtonText: {
-    color: COLORS.TEXT_LIGHT,
-    fontWeight: 'bold',
+    flexGrow: 1,
+    padding: SPACING.MEDIUM,
+    paddingTop: SPACING.LARGE,
   },
   showCard: {
     marginBottom: 15,
@@ -266,6 +240,22 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.FONT_SIZE.MEDIUM,
     color: COLORS.TEXT_MEDIUM,
     marginTop: 40,
+  },
+  streamsButtonContainer: {
+    paddingVertical: SPACING.SMALL,
+    paddingHorizontal: SPACING.MEDIUM,
+    marginBottom: SPACING.SMALL,
+  },
+  streamsButton: {
+    backgroundColor: COLORS.CTA,
+    padding: SPACING.MEDIUM,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  streamsButtonText: {
+    color: COLORS.TEXT_LIGHT,
+    fontSize: TYPOGRAPHY.SIZE_MEDIUM,
+    fontWeight: 'bold',
   },
 });
 

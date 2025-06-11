@@ -14,113 +14,55 @@ import { stripHtmlAndDecodeEntities } from '../utils/textUtils';
  */
 const EpisodeItem = ({ episode, onPress }) => {
   // Extract show name from embedded data if available
-  const getShowName = () => {
-    // Debug the episode data structure
-    console.log("EpisodeItem - Episode data:", {
-      id: episode.id,
-      label: episode.label,
-      hasEmbeddedShows: episode.embedded && episode.embedded.shows,
-      hasUnderscoreEmbeddedShows: episode._embedded && episode._embedded.shows,
-      episodeIdentifier: episode.episodeNumber || episode.label?.match(/EP\s*(\d+)/i)
-    });
+  const getShowName = (episode) => {
+    // Debug log for tracing episode data structure
+    // console.log(`Episode data for showname extraction:`, JSON.stringify(episode, null, 2));
     
-    // First check for embedded shows data with underscore notation
+    if (!episode) return "";
+    
+    // Case 1: Check for embedded shows data (array format)
     if (episode._embedded && episode._embedded.shows) {
-      const showData = episode._embedded.shows;
-      if (Array.isArray(showData) && showData.length > 0) {
-        return stripHtmlAndDecodeEntities(showData[0].label || showData[0].title || '');
-      } else if (typeof showData === 'object' && (showData.label || showData.title)) {
-        return stripHtmlAndDecodeEntities(showData.label || showData.title || '');
+      if (Array.isArray(episode._embedded.shows) && episode._embedded.shows.length > 0) {
+        console.log(`Found embedded shows array: ${episode._embedded.shows[0]?.label || 'no label'}`);
+        return stripHtmlAndDecodeEntities(episode._embedded.shows[0]?.label || episode._embedded.shows[0]?.title || "");
+      }
+      // Case 2: Check for embedded shows data (object format)
+      else if (typeof episode._embedded.shows === 'object' && episode._embedded.shows !== null) {
+        console.log(`Found embedded shows object: ${episode._embedded.shows?.label || 'no label'}`);
+        return stripHtmlAndDecodeEntities(episode._embedded.shows?.label || episode._embedded.shows?.title || "");
       }
     }
     
-    // Check with embedded dot notation
+    // Case 3: Check for embedded dot notation
     if (episode.embedded && episode.embedded.shows) {
-      const showData = episode.embedded.shows;
-      if (Array.isArray(showData) && showData.length > 0) {
-        return stripHtmlAndDecodeEntities(showData[0].label || showData[0].title || '');
-      } else if (typeof showData === 'object' && (showData.label || showData.title)) {
-        return stripHtmlAndDecodeEntities(showData.label || showData.title || '');
+      if (Array.isArray(episode.embedded.shows) && episode.embedded.shows.length > 0) {
+        console.log(`Found 'embedded' dot notation array: ${episode.embedded.shows[0]?.label || 'no label'}`);
+        return stripHtmlAndDecodeEntities(episode.embedded.shows[0]?.label || episode.embedded.shows[0]?.title || "");
+      }
+      else if (typeof episode.embedded.shows === 'object' && episode.embedded.shows !== null) {
+        console.log(`Found 'embedded' dot notation object: ${episode.embedded.shows?.label || 'no label'}`);
+        return stripHtmlAndDecodeEntities(episode.embedded.shows?.label || episode.embedded.shows?.title || "");
       }
     }
     
-    // Check if show is directly attached to episode
+    // Case 4: Check for direct show reference
     if (episode.show && episode.show.label) {
+      console.log(`Found direct show reference: ${episode.show.label}`);
       return stripHtmlAndDecodeEntities(episode.show.label);
     }
     
-    // Try to infer from episode ID or media URL if available
-    if (episode.id) {
-      const idParts = String(episode.id).split('-');
-      const showMatch = idParts.length > 0 ? idParts[0].match(/^([a-z]+)\d+/) : null;
-      
-      if (showMatch && showMatch[1]) {
-        const showId = showMatch[1].toLowerCase();
-        const showNames = {
-          'mbw': 'MacBreak Weekly',
-          'twit': 'This Week in Tech',
-          'sn': 'Security Now',
-          'twig': 'This Week in Google',
-          'ww': 'Windows Weekly',
-          'hom': 'Hands-On Mac',
-          'tnw': 'Tech News Weekly',
-          'floss': 'FLOSS Weekly',
-          'tnt': 'Tech News Today'
-        };
-        
-        if (showNames[showId]) {
-          return showNames[showId];
-        }
-      }
+    // Case 5: Try to infer from episodeNumber or ID pattern
+    let showName = getShowNameFromEpisodeNumber(episode);
+    if (showName) {
+      console.log(`Inferred show name from episode number/pattern: ${showName}`);
+      return showName;
     }
     
-    // Try to extract from episode number visible in the UI (EP 1029, EP 976, etc.)
-    if (episode.episodeNumber) {
-      return getShowNameFromEpisodeNumber(episode.episodeNumber);
-    } 
-    
-    // Try to extract from label if it contains "EP XXX" format
-    if (episode.label) {
-      const epMatch = episode.label.match(/EP\s*(\d+)/i);
-      if (epMatch && epMatch[1]) {
-        const epNumber = parseInt(epMatch[1]);
-        return getShowNameFromEpisodeNumber(epNumber);
-      }
-    }
-    
-    // Last resort - check if we have a showId field
-    if (episode.showId) {
-      return `Show #${episode.showId}`;
-    }
-    
-    // If no showName found, extract from the first line of description
-    if (episode.description) {
-      const firstLine = episode.description.split('\n')[0];
-      if (firstLine && firstLine.length < 40) { // likely a show name if short
-        return firstLine;
-      }
-    }
-    
-    // Hardcode show names based on episode patterns seen in the screenshot
-    if (episode.label?.includes("The Illusion of Thinking") || 
-        episode.label?.match(/EP\s*1029/i)) {
-      return "Security Now";
-    }
-    
-    if (episode.label?.includes("Thanks For All the Round Rects") || 
-        episode.label?.match(/EP\s*976/i)) {
-      return "MacBreak Weekly";
-    }
-    
-    if (episode.label?.includes("The Droids Are in the Escape Pod") || 
-        episode.label?.match(/EP\s*1035/i)) {
-      return "This Week in Tech";
-    }
-    
-    // Default - ensure something is shown
+    // Case 6: Fall back to TWiT Show
+    console.log(`No show name found, using default`);
     return "TWiT Show";
   };
-  
+
   // Helper function to identify show from episode number patterns
   const getShowNameFromEpisodeNumber = (epNumber) => {
     // Based on episode ranges/patterns we know:
@@ -135,9 +77,9 @@ const EpisodeItem = ({ episode, onPress }) => {
     }
     return "TWiT Show"; // Default fallback
   };
-  
-  const showName = getShowName();
-  
+
+  const showName = getShowName(episode);
+
   return (
     <TouchableOpacity
       style={styles.episodeItem}
@@ -154,7 +96,9 @@ const EpisodeItem = ({ episode, onPress }) => {
         {showName && (
           <Text style={styles.showName}>{showName}</Text>
         )}
-        <Text style={styles.episodeTitle}>{episode.label || 'Unknown Episode'}</Text>
+        <Text style={styles.episodeTitle} numberOfLines={2}>
+          {stripHtmlAndDecodeEntities(episode.label || 'Unknown Episode')}
+        </Text>
         {episode.airingDate && (
           <Text style={styles.episodeDate}>
             {formatDate(episode.airingDate)}
@@ -162,7 +106,7 @@ const EpisodeItem = ({ episode, onPress }) => {
         )}
         {episode.description && (
           <Text style={styles.episodeDescription} numberOfLines={2}>
-            {episode.description}
+            {stripHtmlAndDecodeEntities(episode.description)}
           </Text>
         )}
       </View>
