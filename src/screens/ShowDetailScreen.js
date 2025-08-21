@@ -7,13 +7,11 @@ import {
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
-  ScrollView,
   Linking
 } from 'react-native';
 import apiService from '../services/api';
-import { stripHtmlAndDecodeEntities, decodeHtmlEntities } from '../utils/textUtils';
+import { stripHtmlAndDecodeEntities } from '../utils/textUtils';
 import { COLORS, SPACING, TYPOGRAPHY } from '../utils/theme';
-import Ionicons from 'react-native-vector-icons/Ionicons';
 
 const extractImageUrl = (show) => {
   if (show.coverArt) {
@@ -62,28 +60,17 @@ const extractEpisodeImageUrl = (episode) => {
   return null;
 };
 
-const formatFileSize = (sizeInBytes) => {
-  if (!sizeInBytes) return null;
-  
-  const bytes = parseInt(sizeInBytes);
-  if (isNaN(bytes)) return null;
-  
-  // Convert to MB or GB as appropriate
-  if (bytes < 1024 * 1024) {
-    return `${(bytes / 1024).toFixed(1)} KB`;
-  } else if (bytes < 1024 * 1024 * 1024) {
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  } else {
-    return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
-  }
-};
-
 const ShowDetailScreen = ({ route, navigation }) => {
   const { id, showData: initialShowData } = route.params;
   const [show, setShow] = useState(initialShowData || null);
   const [episodes, setEpisodes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const PAGE_SIZE = 20;
+  const [page, setPage] = useState(1);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     const fetchShowDetails = async () => {
@@ -103,8 +90,8 @@ const ShowDetailScreen = ({ route, navigation }) => {
           setError('Could not load show details. Invalid data received.');
         }
         
-        // Fetch episodes for this show
-        const episodesData = await apiService.getEpisodes({ 'filter[shows]': id });
+        // Fetch first page of episodes for this show
+        const episodesData = await apiService.getEpisodes({ 'filter[shows]': id, page: 1, range: PAGE_SIZE });
         console.log('Episodes count:', episodesData.length);
         
         // Log first episode data for debugging
@@ -122,6 +109,8 @@ const ShowDetailScreen = ({ route, navigation }) => {
         }
         
         setEpisodes(episodesData);
+        setHasMore(episodesData.length === PAGE_SIZE);
+        setPage(2);
       } catch (err) {
         console.error('Error fetching show details:', err);
         if (!initialShowData) {
@@ -134,6 +123,97 @@ const ShowDetailScreen = ({ route, navigation }) => {
 
     fetchShowDetails();
   }, [id, initialShowData]);
+  
+  const renderHeader = () => (
+    <>
+      <View style={styles.headerImageContainer}>
+        {extractImageUrl(show) ? (
+          <Image
+            source={{ uri: extractImageUrl(show) }}
+            style={styles.showImage}
+            resizeMode="contain"
+          />
+        ) : (
+          <View style={styles.placeholderImage}>
+            <Text style={styles.placeholderText}>{show && show.label ? show.label.charAt(0) : 'T'}</Text>
+          </View>
+        )}
+      </View>
+
+      <View style={styles.showInfoContainer}>
+        <Text style={styles.showTitle}>{(show && show.label) || 'Unknown Show'}</Text>
+
+        {show && show.description ? (
+          <Text style={styles.showDescription}>
+            {stripHtmlAndDecodeEntities(show.description)}
+          </Text>
+        ) : null}
+
+        {show && show.tagLine ? (
+          <Text style={styles.showTagLine}>
+            {stripHtmlAndDecodeEntities(show.tagLine)}
+          </Text>
+        ) : null}
+
+        {show && show.showNotes ? (
+          <Text style={styles.showNotes}>
+            {stripHtmlAndDecodeEntities(show.showNotes)}
+          </Text>
+        ) : null}
+
+        {show && show.showContactInfo ? (
+          <Text style={styles.showContactInfo}>
+            {stripHtmlAndDecodeEntities(show.showContactInfo)}
+          </Text>
+        ) : null}
+
+        {show && show.website ? (
+          <TouchableOpacity
+            style={styles.websiteButton}
+            onPress={() => Linking.openURL(show.website)}
+          >
+            <Text style={styles.websiteButtonText}>Visit Website</Text>
+          </TouchableOpacity>
+        ) : null}
+      </View>
+
+      <View style={styles.episodesContainer}>
+        <Text style={styles.episodesTitle}>Episodes</Text>
+      </View>
+    </>
+  );
+
+  const loadMore = async () => {
+    if (loadingMore || loading || !hasMore) return;
+    try {
+      setLoadingMore(true);
+      const nextPage = page;
+      const more = await apiService.getEpisodes({ 'filter[shows]': id, page: nextPage, range: PAGE_SIZE });
+      if (more.length > 0) {
+        setEpisodes(prev => [...prev, ...more]);
+      }
+      setHasMore(more.length === PAGE_SIZE);
+      setPage(nextPage + 1);
+    } catch (e) {
+      console.warn('Failed to load more episodes:', e);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
+  const onRefresh = async () => {
+    try {
+      setRefreshing(true);
+      const fresh = await apiService.getEpisodes({ 'filter[shows]': id, page: 1, range: PAGE_SIZE });
+      setEpisodes(fresh);
+      setHasMore(fresh.length === PAGE_SIZE);
+      setPage(2);
+    } catch (e) {
+      console.warn('Failed to refresh episodes:', e);
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const renderEpisodeItem = ({ item }) => {
     const imageUrl = extractEpisodeImageUrl(item);
@@ -311,73 +391,24 @@ const ShowDetailScreen = ({ route, navigation }) => {
 
   return (
     <View style={styles.container}>
-      <ScrollView>
-        <View style={styles.headerImageContainer}>
-          {extractImageUrl(show) ? (
-            <Image
-              source={{ uri: extractImageUrl(show) }}
-              style={styles.showImage}
-              resizeMode="contain"
-            />
-          ) : (
-            <View style={styles.placeholderImage}>
-              <Text style={styles.placeholderText}>{show.label ? show.label.charAt(0) : 'T'}</Text>
-            </View>
-          )}
-        </View>
-        
-        <View style={styles.showInfoContainer}>
-          <Text style={styles.showTitle}>{show.label || 'Unknown Show'}</Text>
-          
-          {show.description && (
-            <Text style={styles.showDescription}>
-              {stripHtmlAndDecodeEntities(show.description)}
-            </Text>
-          )}
-          
-          {show.tagLine && (
-            <Text style={styles.showTagLine}>
-              {stripHtmlAndDecodeEntities(show.tagLine)}
-            </Text>
-          )}
-          
-          {show.showNotes && (
-            <Text style={styles.showNotes}>
-              {stripHtmlAndDecodeEntities(show.showNotes)}
-            </Text>
-          )}
-          
-          {show.showContactInfo && (
-            <Text style={styles.showContactInfo}>
-              {stripHtmlAndDecodeEntities(show.showContactInfo)}
-            </Text>
-          )}
-          
-          {show.website && (
-            <TouchableOpacity
-              style={styles.websiteButton}
-              onPress={() => Linking.openURL(show.website)}
-            >
-              <Text style={styles.websiteButtonText}>Visit Website</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-        
-        <View style={styles.episodesContainer}>
-          <Text style={styles.episodesTitle}>Episodes</Text>
-          
-          {episodes.length > 0 ? (
-            <FlatList
-              data={episodes}
-              renderItem={renderEpisodeItem}
-              keyExtractor={(item) => item.id.toString()}
-              scrollEnabled={false}
-            />
-          ) : (
-            <Text style={styles.noEpisodesText}>No episodes available</Text>
-          )}
-        </View>
-      </ScrollView>
+      <FlatList
+        data={episodes}
+        renderItem={renderEpisodeItem}
+        keyExtractor={(item) => item.id.toString()}
+        ListHeaderComponent={renderHeader}
+        ListEmptyComponent={!loading ? (
+          <Text style={styles.noEpisodesText}>No episodes available</Text>
+        ) : null}
+        ListFooterComponent={loadingMore ? (
+          <View style={{ padding: SPACING.MEDIUM }}>
+            <ActivityIndicator size="small" color={COLORS.CTA} />
+          </View>
+        ) : null}
+        onEndReached={loadMore}
+        onEndReachedThreshold={0.5}
+        refreshing={refreshing}
+        onRefresh={onRefresh}
+      />
     </View>
   );
 };

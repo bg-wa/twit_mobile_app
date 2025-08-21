@@ -19,6 +19,11 @@ const CACHE_KEYS = {
   EPISODE_DETAIL: 'twit_cache_episode_',
 };
 
+// Approx. maximum size per cached item (in characters). AsyncStorage stores strings
+// and is ultimately backed by SQLite on Android. Very large values can cause SQLITE_FULL.
+// Keep a conservative limit to avoid filling storage with a single entry.
+const MAX_ITEM_SIZE_CHARS = 500_000; // ~500 KB
+
 /**
  * Check if the device is currently online
  * @returns {Promise<boolean>} True if online, false if offline
@@ -40,9 +45,27 @@ export const saveToCache = async (key, data) => {
       timestamp: Date.now(),
       data,
     };
-    await AsyncStorage.setItem(key, JSON.stringify(cacheData));
+    const serialized = JSON.stringify(cacheData);
+
+    // Skip caching overly large payloads to prevent storage pressure
+    if (serialized.length > MAX_ITEM_SIZE_CHARS) {
+      console.warn(`Skipping cache for key ${key}: payload too large (~${Math.round(serialized.length / 1024)} KB)`);
+      return;
+    }
+
+    await AsyncStorage.setItem(key, serialized);
   } catch (error) {
     console.error('Error saving to cache:', error);
+    const message = String(error && (error.message || error));
+    if (message.includes('SQLITE_FULL') || message.includes('database or disk is full')) {
+      // Best-effort recovery: clear app cache namespace to free space
+      try {
+        console.warn('Cache storage full. Clearing cached entries to recover...');
+        await clearAllCache();
+      } catch (clearErr) {
+        console.error('Error while clearing cache after SQLITE_FULL:', clearErr);
+      }
+    }
   }
 };
 
