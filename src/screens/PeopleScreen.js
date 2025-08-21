@@ -19,13 +19,21 @@ const PeopleScreen = ({ navigation }) => {
   const [error, setError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const [filterStaff, setFilterStaff] = useState(true); // Default to staff only (true = staff only)
+  const PAGE_SIZE = 20;
+  const [page, setPage] = useState(1);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
 
   useEffect(() => {
-    fetchPeople();
+    // Reset pagination when filter changes and fetch first page
+    setPage(1);
+    setHasMore(true);
+    fetchPeople(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterStaff]);
 
-  const fetchPeople = async () => {
-    setLoading(true);
+  const fetchPeople = async (reset = false) => {
+    if (reset) setLoading(true);
     setError(null);
     try {
       // Prepare filter params based on filterStaff state
@@ -33,25 +41,42 @@ const PeopleScreen = ({ navigation }) => {
       if (filterStaff !== null) {
         params.twit_staff = filterStaff ? 1 : 0;
       }
-      
-      // The people data is directly returned from the API service
-      const peopleData = await apiService.getPeople(params);
-      setPeople(peopleData);
-      
-      // Add debug logging
-      console.log(`Loaded ${peopleData.length} people`);
+      const currentPage = reset ? 1 : page;
+      const peopleData = await apiService.getPeople({ ...params, page: currentPage, range: PAGE_SIZE });
+
+      if (reset) {
+        setPeople(peopleData);
+      } else {
+        setPeople(prev => [...prev, ...peopleData]);
+      }
+
+      // Determine if there's more to load
+      setHasMore(peopleData.length === PAGE_SIZE);
+      setPage(currentPage + 1);
+
+      // Debug
+      console.log(`Loaded ${peopleData.length} people (page ${currentPage})`);
     } catch (err) {
       console.error('Error fetching people:', err);
       setError('Failed to load people. Please try again later.');
     } finally {
-      setLoading(false);
+      if (reset) setLoading(false);
       setRefreshing(false);
+      setLoadingMore(false);
     }
   };
 
   const handleRefresh = () => {
     setRefreshing(true);
-    fetchPeople();
+    setPage(1);
+    setHasMore(true);
+    fetchPeople(true);
+  };
+
+  const loadMore = async () => {
+    if (loadingMore || loading || !hasMore) return;
+    setLoadingMore(true);
+    await fetchPeople(false);
   };
 
   const navigateToPersonDetail = (person) => {
@@ -179,6 +204,17 @@ const PeopleScreen = ({ navigation }) => {
         contentContainerStyle={styles.peopleGrid}
         refreshing={refreshing}
         onRefresh={handleRefresh}
+        onEndReached={loadMore}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={loadingMore ? (
+          <View style={{ padding: SPACING.MEDIUM }}>
+            <ActivityIndicator size="small" color={COLORS.CTA} />
+          </View>
+        ) : null}
+        initialNumToRender={10}
+        maxToRenderPerBatch={10}
+        windowSize={5}
+        removeClippedSubviews
         ListEmptyComponent={() => (
           <View style={styles.noResultsContainer}>
             <Text style={styles.noResultsText}>No people found</Text>
