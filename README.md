@@ -1,6 +1,7 @@
 # TWiT Mobile App
 
 A React Native / Expo mobile application for TWiT.tv content.
+![Mobile App](./twit_mobile_app.gif)
 
 ## Overview
 
