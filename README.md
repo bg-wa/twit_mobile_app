@@ -131,6 +131,13 @@ The TWiT Mobile App allows users to:
 └── /assets                     # Images, fonts and other assets
 ```
 
+## Caching
+
+- All API GET responses are cached for 10 minutes using `AsyncStorage`.
+- The caching layer is implemented in `src/services/api.js` via a request wrapper around Axios. Keys are derived from method + baseURL + URL + params + body.
+- When offline, the app will prefer cached data and may serve stale entries; otherwise an error is shown.
+- You can manually clear all API cache from the Diagnostic screen (`src/components/DiagnosticScreen.js`) using the "Clear API Cache" button.
+
 ## Troubleshooting
 
 ### White screen / splash screen stuck

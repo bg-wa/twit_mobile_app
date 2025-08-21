@@ -12,6 +12,7 @@ const DiagnosticScreen = () => {
   const [apiStatus, setApiStatus] = useState('Not tested');
   const [showsData, setShowsData] = useState(null);
   const [errors, setErrors] = useState([]);
+  const [cacheStatus, setCacheStatus] = useState('Idle');
 
   const checkNetworkStatus = async () => {
     try {
@@ -63,6 +64,24 @@ const DiagnosticScreen = () => {
         <Button 
           title="Test API Connection" 
           onPress={testApiConnection}
+        />
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Cache</Text>
+        <Text>Status: {cacheStatus}</Text>
+        <Button
+          title="Clear API Cache"
+          onPress={async () => {
+            try {
+              setCacheStatus('Clearing...');
+              await apiService.clearCache();
+              setCacheStatus('Cleared');
+            } catch (e) {
+              setCacheStatus('Error clearing cache');
+              setErrors(prev => [...prev, `Cache clear error: ${e.message}`]);
+            }
+          }}
         />
       </View>
 

@@ -7,8 +7,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
 
-// Cache expiration time (24 hours in milliseconds)
-const CACHE_EXPIRY = 24 * 60 * 60 * 1000;
+// Cache expiration time (10 minutes in milliseconds)
+const CACHE_EXPIRY = 10 * 60 * 1000;
 
 // Cache keys
 const CACHE_KEYS = {
@@ -52,7 +52,7 @@ export const saveToCache = async (key, data) => {
  * @param {boolean} ignoreExpiry - Whether to ignore cache expiration
  * @returns {Promise<any|null>} Cached data or null if not found or expired
  */
-export const getFromCache = async (key, ignoreExpiry = false) => {
+export const getFromCache = async (key, ignoreExpiry = false, expiryMs = CACHE_EXPIRY) => {
   try {
     const cachedData = await AsyncStorage.getItem(key);
     
@@ -63,7 +63,7 @@ export const getFromCache = async (key, ignoreExpiry = false) => {
     const { timestamp, data } = JSON.parse(cachedData);
     
     // Check if cache is expired
-    if (!ignoreExpiry && Date.now() - timestamp > CACHE_EXPIRY) {
+    if (!ignoreExpiry && Date.now() - timestamp > expiryMs) {
       return null;
     }
     
@@ -88,6 +88,23 @@ export const clearCache = async (key) => {
 };
 
 /**
+ * Clear all cache entries that start with a prefix
+ * @param {string} prefix - Key prefix to clear
+ * @returns {Promise<void>}
+ */
+export const clearCacheByPrefix = async (prefix) => {
+  try {
+    const keys = await AsyncStorage.getAllKeys();
+    const matched = keys.filter(key => key.startsWith(prefix));
+    if (matched.length) {
+      await AsyncStorage.multiRemove(matched);
+    }
+  } catch (error) {
+    console.error('Error clearing cache by prefix:', error);
+  }
+};
+
+/**
  * Clear all app cache
  * @returns {Promise<void>}
  */
@@ -107,5 +124,6 @@ export default {
   saveToCache,
   getFromCache,
   clearCache,
+  clearCacheByPrefix,
   clearAllCache,
 };

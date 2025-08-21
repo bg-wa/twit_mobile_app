@@ -34,31 +34,96 @@ api.interceptors.response.use(
   }
 );
 
+// ---- Generic cached request helpers ----
+const HTTP_CACHE_PREFIX = 'twit_cache_http_';
+const TEN_MIN_MS = 10 * 60 * 1000;
+
+// Deterministic stringify with sorted keys
+const stableStringify = (obj) => {
+  if (obj === undefined) return 'undefined';
+  if (obj === null || typeof obj !== 'object') return JSON.stringify(obj);
+  if (Array.isArray(obj)) return '[' + obj.map(stableStringify).join(',') + ']';
+  const keys = Object.keys(obj).sort();
+  return '{' + keys.map(k => JSON.stringify(k) + ':' + stableStringify(obj[k])).join(',') + '}';
+};
+
+// Simple djb2 hash to keep keys compact
+const hashString = (str) => {
+  let hash = 5381;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) + hash) + str.charCodeAt(i);
+    hash = hash & 0xffffffff;
+  }
+  // convert to unsigned and hex
+  return (hash >>> 0).toString(16);
+};
+
+const buildCacheKey = (config) => {
+  const { method = 'GET', url, baseURL = api.defaults.baseURL, params, data, headers } = config;
+  const normalized = [
+    method.toUpperCase(),
+    (baseURL || '').replace(/\/$/, ''),
+    url,
+    stableStringify(params || {}),
+    stableStringify(data || {}),
+    // Include only headers that affect representation
+    stableStringify({ Accept: headers?.Accept || headers?.accept })
+  ].join('|');
+  return HTTP_CACHE_PREFIX + hashString(normalized);
+};
+
+const requestWithCache = async (reqConfig, { ttlMs = TEN_MIN_MS, forceRefresh = false } = {}) => {
+  const method = (reqConfig.method || 'GET').toUpperCase();
+  const isGetLike = method === 'GET' || method === 'HEAD';
+  const cacheKey = isGetLike ? buildCacheKey(reqConfig) : null;
+
+  // Try cache first for GET/HEAD
+  if (isGetLike && !forceRefresh && cacheKey) {
+    const cached = await cacheManager.getFromCache(cacheKey, false, ttlMs);
+    if (cached != null) {
+      return { data: cached, status: 200, statusText: 'OK', headers: { 'x-cache': 'HIT' }, config: reqConfig };
+    }
+  }
+
+  // If offline and no cache for GET, surface a clear error
+  const online = await cacheManager.isOnline();
+  if (!online && isGetLike) {
+    // second chance: ignore expiry in case we have stale but useful cache
+    if (cacheKey) {
+      const stale = await cacheManager.getFromCache(cacheKey, true);
+      if (stale != null) {
+        return { data: stale, status: 200, statusText: 'OK (stale)', headers: { 'x-cache': 'STALE' }, config: reqConfig };
+      }
+    }
+    throw new Error('No internet connection and no cached data available');
+  }
+
+  // Perform network request
+  const response = await api.request(reqConfig);
+
+  // Cache GET/HEAD responses
+  if (isGetLike && cacheKey) {
+    await cacheManager.saveToCache(cacheKey, response.data);
+  } else if (!isGetLike) {
+    // For mutating requests, best-effort: clear HTTP cache namespace
+    await cacheManager.clearCacheByPrefix(HTTP_CACHE_PREFIX);
+  }
+
+  return response;
+};
+
+const cachedGet = (url, options = {}, cacheOptions = {}) => {
+  return requestWithCache({ url, method: 'GET', ...options }, cacheOptions);
+};
+
 // API service functions
 const apiService = {
   // Shows
   getShows: async (params = {}) => {
     try {
-      // Check if we're online
-      const online = await cacheManager.isOnline();
-      
-      if (online) {
-        // If online, fetch from API
-        const response = await api.get('/shows', { params });
-        const shows = response.data.shows || [];
-        
-        // Cache the results
-        await cacheManager.saveToCache(cacheManager.CACHE_KEYS.SHOWS, shows);
-        return shows;
-      } else {
-        // If offline, try to get from cache
-        const cachedShows = await cacheManager.getFromCache(cacheManager.CACHE_KEYS.SHOWS);
-        if (cachedShows) {
-          console.log('Using cached shows data');
-          return cachedShows;
-        }
-        throw new Error('No internet connection and no cached data available');
-      }
+      const response = await cachedGet('/shows', { params });
+      const shows = response.data.shows || [];
+      return shows;
     } catch (error) {
       console.error('Error fetching shows:', error);
       throw error;
@@ -67,23 +132,9 @@ const apiService = {
   
   getShowById: async (id) => {
     try {
-      const cacheKey = `${cacheManager.CACHE_KEYS.SHOW_DETAIL}${id}`;
-      const online = await cacheManager.isOnline();
-      
-      if (online) {
-        const response = await api.get(`/shows/${id}`);
-        // Extract just the show object from response.data.shows
-        const showData = response.data.shows || {};
-        await cacheManager.saveToCache(cacheKey, showData);
-        return showData;
-      } else {
-        const cachedShow = await cacheManager.getFromCache(cacheKey);
-        if (cachedShow) {
-          console.log(`Using cached data for show ${id}`);
-          return cachedShow;
-        }
-        throw new Error('No internet connection and no cached data available');
-      }
+      const response = await cachedGet(`/shows/${id}`);
+      const showData = response.data.shows || {};
+      return showData;
     } catch (error) {
       console.error(`Error fetching show ${id}:`, error);
       throw error;
@@ -93,21 +144,9 @@ const apiService = {
   // Episodes
   getEpisodes: async (params = {}) => {
     try {
-      const online = await cacheManager.isOnline();
-      
-      if (online) {
-        const response = await api.get('/episodes', { params });
-        const episodes = response.data.episodes || [];
-        await cacheManager.saveToCache(cacheManager.CACHE_KEYS.EPISODES, episodes);
-        return episodes;
-      } else {
-        const cachedEpisodes = await cacheManager.getFromCache(cacheManager.CACHE_KEYS.EPISODES);
-        if (cachedEpisodes) {
-          console.log('Using cached episodes data');
-          return cachedEpisodes;
-        }
-        throw new Error('No internet connection and no cached data available');
-      }
+      const response = await cachedGet('/episodes', { params });
+      const episodes = response.data.episodes || [];
+      return episodes;
     } catch (error) {
       console.error('Error fetching episodes:', error);
       throw error;
@@ -116,24 +155,15 @@ const apiService = {
   
   getEpisodesByPersonId: async (personId, params = {}) => {
     try {
-      const online = await cacheManager.isOnline();
-      
-      if (online) {
-        // Set the credits_people parameter to the person's ID
-        const queryParams = {
-          ...params,
-          credits_people: personId,
-          // Limit to a reasonable number of episodes
-          range: params.range || 10
-        };
-        
-        const response = await api.get('/episodes', { params: queryParams });
-        console.log(`Fetched ${response.data.episodes?.length || 0} episodes for person ${personId}`);
-        return response.data.episodes || [];
-      } else {
-        // We could implement caching for person's episodes here if needed
-        throw new Error('Cannot fetch person episodes while offline');
-      }
+      // Set the credits_people parameter to the person's ID
+      const queryParams = {
+        ...params,
+        credits_people: personId,
+        range: params.range || 10,
+      };
+      const response = await cachedGet('/episodes', { params: queryParams });
+      console.log(`Fetched ${response.data.episodes?.length || 0} episodes for person ${personId}`);
+      return response.data.episodes || [];
     } catch (error) {
       console.error(`Error fetching episodes for person ${personId}:`, error);
       throw error;
@@ -142,48 +172,35 @@ const apiService = {
   
   getEpisodeById: async (id) => {
     try {
-      const cacheKey = `${cacheManager.CACHE_KEYS.EPISODE_DETAIL}${id}`;
-      const online = await cacheManager.isOnline();
+      // Request multiple embedded entities using comma separated list
+      const response = await cachedGet(`/episodes/${id}?embed=people,hosts,guests,shows`);
+      const episodeData = response.data.episodes || {};
       
-      if (online) {
-        // Request multiple embedded entities using comma separated list
-        const response = await api.get(`/episodes/${id}?embed=people,hosts,guests,shows`);
-        const episodeData = response.data.episodes || {};
-        
-        // If the episode is part of a show but doesn't have people directly, get show hosts/guests
-        if ((!episodeData._embedded || !episodeData._embedded.people) && episodeData._embedded && episodeData._embedded.shows) {
-          try {
-            // Get the first show ID
-            const showId = episodeData._embedded.shows[0]?.id;
-            if (showId) {
-              const showResponse = await api.get(`/shows/${showId}?embed=hosts,people`);
-              const showData = showResponse.data.shows || {};
-              
-              // Add show hosts/people to episode data if available
-              if (showData._embedded && (showData._embedded.hosts || showData._embedded.people)) {
-                if (!episodeData._embedded) episodeData._embedded = {};
-                episodeData._embedded.people = [
-                  ...(showData._embedded.hosts || []),
-                  ...(showData._embedded.people || [])
-                ];
-                console.log(`Added ${episodeData._embedded.people.length} people from show data`);
-              }
+      // If the episode is part of a show but doesn't have people directly, get show hosts/guests
+      if ((!episodeData._embedded || !episodeData._embedded.people) && episodeData._embedded && episodeData._embedded.shows) {
+        try {
+          // Get the first show ID
+          const showId = episodeData._embedded.shows[0]?.id;
+          if (showId) {
+            const showResponse = await cachedGet(`/shows/${showId}?embed=hosts,people`);
+            const showData = showResponse.data.shows || {};
+            
+            // Add show hosts/people to episode data if available
+            if (showData._embedded && (showData._embedded.hosts || showData._embedded.people)) {
+              if (!episodeData._embedded) episodeData._embedded = {};
+              episodeData._embedded.people = [
+                ...(showData._embedded.hosts || []),
+                ...(showData._embedded.people || [])
+              ];
+              console.log(`Added ${episodeData._embedded.people.length} people from show data`);
             }
-          } catch (showError) {
-            console.warn('Error getting show hosts:', showError);
           }
+        } catch (showError) {
+          console.warn('Error getting show hosts:', showError);
         }
-        
-        await cacheManager.saveToCache(cacheKey, episodeData);
-        return episodeData;
-      } else {
-        const cachedEpisode = await cacheManager.getFromCache(cacheKey);
-        if (cachedEpisode) {
-          console.log(`Using cached data for episode ${id}`);
-          return cachedEpisode;
-        }
-        throw new Error('No internet connection and no cached data available');
       }
+      
+      return episodeData;
     } catch (error) {
       console.error(`Error fetching episode ${id}:`, error);
       throw error;
@@ -193,21 +210,9 @@ const apiService = {
   // Streams
   getStreams: async (params = {}) => {
     try {
-      const online = await cacheManager.isOnline();
-      
-      if (online) {
-        const response = await api.get('/streams', { params });
-        const streams = response.data.streams || [];
-        await cacheManager.saveToCache(cacheManager.CACHE_KEYS.STREAMS, streams);
-        return streams;
-      } else {
-        const cachedStreams = await cacheManager.getFromCache(cacheManager.CACHE_KEYS.STREAMS);
-        if (cachedStreams) {
-          console.log('Using cached streams data');
-          return cachedStreams;
-        }
-        throw new Error('No internet connection and no cached data available');
-      }
+      const response = await cachedGet('/streams', { params });
+      const streams = response.data.streams || [];
+      return streams;
     } catch (error) {
       console.error('Error fetching streams:', error);
       throw error;
@@ -216,15 +221,8 @@ const apiService = {
   
   getStreamById: async (id) => {
     try {
-      // Streams should always be fetched fresh if possible since they're live content
-      const online = await cacheManager.isOnline();
-      
-      if (online) {
-        const response = await api.get(`/streams/${id}`);
-        return response.data;
-      } else {
-        throw new Error('Cannot fetch live stream details while offline');
-      }
+      const response = await cachedGet(`/streams/${id}`);
+      return response.data;
     } catch (error) {
       console.error(`Error fetching stream ${id}:`, error);
       throw error;
@@ -234,23 +232,15 @@ const apiService = {
   // People
   getPeople: async (params = {}) => {
     try {
-      const online = await cacheManager.isOnline();
+      const response = await cachedGet('/people', { params });
+      // Debug the response structure
+      console.log('People API response structure:', Object.keys(response.data));
       
-      if (online) {
-        const response = await api.get('/people', { params });
-        
-        // Debug the response structure
-        console.log('People API response structure:', Object.keys(response.data));
-        
-        // The API returns an object with a 'people' property that contains the array
-        if (response.data && Array.isArray(response.data.people)) {
-          return response.data.people;
-        }
-        return [];
-      } else {
-        // People data is less critical, so we don't cache it by default
-        throw new Error('Cannot fetch people while offline');
+      // The API returns an object with a 'people' property that contains the array
+      if (response.data && Array.isArray(response.data.people)) {
+        return response.data.people;
       }
+      return [];
     } catch (error) {
       console.error('Error fetching people:', error);
       throw error;
@@ -259,14 +249,8 @@ const apiService = {
   
   getPersonById: async (id) => {
     try {
-      const online = await cacheManager.isOnline();
-      
-      if (online) {
-        const response = await api.get(`/people/${id}`);
-        return response.data;
-      } else {
-        throw new Error('Cannot fetch person details while offline');
-      }
+      const response = await cachedGet(`/people/${id}`);
+      return response.data;
     } catch (error) {
       console.error(`Error fetching person ${id}:`, error);
       throw error;
@@ -276,14 +260,8 @@ const apiService = {
   // Posts (blog posts, transcripts)
   getPosts: async (params = {}) => {
     try {
-      const online = await cacheManager.isOnline();
-      
-      if (online) {
-        const response = await api.get('/posts', { params });
-        return response.data.posts || [];
-      } else {
-        throw new Error('Cannot fetch posts while offline');
-      }
+      const response = await cachedGet('/posts', { params });
+      return response.data.posts || [];
     } catch (error) {
       console.error('Error fetching posts:', error);
       throw error;
@@ -293,14 +271,8 @@ const apiService = {
   // Categories
   getCategories: async (params = {}) => {
     try {
-      const online = await cacheManager.isOnline();
-      
-      if (online) {
-        const response = await api.get('/categories', { params });
-        return response.data.categories || [];
-      } else {
-        throw new Error('Cannot fetch categories while offline');
-      }
+      const response = await cachedGet('/categories', { params });
+      return response.data.categories || [];
     } catch (error) {
       console.error('Error fetching categories:', error);
       throw error;
@@ -310,14 +282,8 @@ const apiService = {
   // Topics
   getTopics: async (params = {}) => {
     try {
-      const online = await cacheManager.isOnline();
-      
-      if (online) {
-        const response = await api.get('/topics', { params });
-        return response.data.topics || [];
-      } else {
-        throw new Error('Cannot fetch topics while offline');
-      }
+      const response = await cachedGet('/topics', { params });
+      return response.data.topics || [];
     } catch (error) {
       console.error('Error fetching topics:', error);
       throw error;
