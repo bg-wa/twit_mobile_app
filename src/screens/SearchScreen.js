@@ -6,11 +6,11 @@ import {
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
-  SafeAreaView
+  SafeAreaView,
+  Image
 } from 'react-native';
 import apiService from '../services/api';
 import SearchBar from '../components/SearchBar';
-import ShowItem from '../components/ShowItem';
 import EpisodeItem from '../components/EpisodeItem';
 import ErrorView from '../components/ErrorView';
 import { COLORS, SPACING, TYPOGRAPHY } from '../utils/theme';
@@ -216,15 +216,52 @@ const SearchScreen = ({ navigation }) => {
     }
   };
 
-  const renderShowItem = ({ item }) => (
-    <ShowItem 
-      show={item} 
-      onPress={() => navigation.navigate('ShowDetail', { 
-        id: item.id, 
-        title: stripHtmlAndDecodeEntities(item.label) || 'Show Details'
-      })}
-    />
-  );
+  const renderShowItem = ({ item }) => {
+    // Match HomeScreen's image selection logic
+    let imageSource = null;
+    if (item.coverArt) {
+      if (item.coverArt.derivatives && item.coverArt.derivatives.twit_album_art_300x300) {
+        imageSource = item.coverArt.derivatives.twit_album_art_300x300;
+      } else if (item.coverArt.url) {
+        imageSource = item.coverArt.url;
+      }
+    } else if (typeof item.image === 'string') {
+      imageSource = item.image;
+    }
+
+    return (
+      <TouchableOpacity
+        style={styles.showCard}
+        onPress={() => navigation.navigate('ShowDetail', { 
+          id: item.id, 
+          title: stripHtmlAndDecodeEntities(item.label) || 'Show Details',
+          showData: item
+        })}
+      >
+        <View style={styles.imageContainer}>
+          {imageSource ? (
+            <Image
+              source={{ uri: imageSource }}
+              style={styles.showImage}
+              resizeMode="contain"
+            />
+          ) : (
+            <View style={styles.placeholderImage}>
+              <Text style={styles.placeholderText}>{item.label ? item.label.charAt(0) : 'T'}</Text>
+            </View>
+          )}
+        </View>
+        <View style={styles.showInfo}>
+          <Text style={styles.showTitle}>{stripHtmlAndDecodeEntities(item.label) || 'Unknown Show'}</Text>
+          {item.description && (
+            <Text style={styles.showDescription} numberOfLines={2}>
+              {stripHtmlAndDecodeEntities(item.description)}
+            </Text>
+          )}
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   const renderEpisodeItem = ({ item }) => {
     // Try to extract show ID from embedded data or directly from the item
@@ -416,6 +453,57 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: SPACING.MEDIUM,
+  },
+  // Show card styles copied from HomeScreen to match UI
+  showCard: {
+    marginBottom: 15,
+    backgroundColor: COLORS.CARD,
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1.41,
+    elevation: 2,
+    overflow: 'hidden',
+  },
+  imageContainer: {
+    width: '100%',
+    aspectRatio: 16/9,
+    overflow: 'hidden',
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
+  },
+  showImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'contain',
+    backgroundColor: COLORS.BORDER,
+  },
+  placeholderImage: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: COLORS.BORDER,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  placeholderText: {
+    fontSize: 40,
+    fontWeight: 'bold',
+    color: COLORS.TEXT_MEDIUM,
+  },
+  showInfo: {
+    padding: 12,
+  },
+  showTitle: {
+    fontSize: TYPOGRAPHY.FONT_SIZE.LARGE,
+    fontWeight: '600',
+    color: COLORS.TEXT_DARK,
+    marginBottom: SPACING.SMALL / 2,
+  },
+  showDescription: {
+    fontSize: TYPOGRAPHY.FONT_SIZE.SMALL,
+    color: COLORS.TEXT_MEDIUM,
+    marginBottom: SPACING.SMALL,
   },
   centerContainer: {
     flex: 1,
