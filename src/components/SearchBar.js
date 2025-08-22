@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   TextInput,
@@ -10,48 +10,21 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../utils/theme';
 
 /**
- * A reusable search bar component with debounced input
+ * A reusable search bar component that triggers search only on submit/button.
  */
-const SearchBar = ({ onSearch, placeholder = 'Search...', debounceTime = 500 }) => {
+const SearchBar = ({ onSearch, placeholder = 'Search...' }) => {
   const [searchText, setSearchText] = useState('');
-  const debounceTimeout = useRef(null);
-
-  // Clear the timeout on component unmount
-  useEffect(() => {
-    return () => {
-      if (debounceTimeout.current) {
-        clearTimeout(debounceTimeout.current);
-      }
-    };
-  }, []);
 
   const handleTextChange = (text) => {
     setSearchText(text);
-    
-    // Clear any existing timeout
-    if (debounceTimeout.current) {
-      clearTimeout(debounceTimeout.current);
-    }
-    
-    // If text is empty, trigger search immediately
-    if (!text.trim()) {
+    // Do NOT trigger onSearch while typing. Submission only.
+    if (!text.trim() && onSearch) {
+      // Clearing should also clear results immediately.
       onSearch('');
-      return;
     }
-    
-    // Set a new timeout for the debounced search
-    debounceTimeout.current = setTimeout(() => {
-      if (onSearch && text.trim()) {
-        onSearch(text.trim());
-      }
-    }, debounceTime);
   };
 
   const handleSearch = () => {
-    if (debounceTimeout.current) {
-      clearTimeout(debounceTimeout.current);
-    }
-    
     if (onSearch && searchText.trim()) {
       onSearch(searchText.trim());
     }

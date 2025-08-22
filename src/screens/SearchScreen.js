@@ -27,6 +27,32 @@ const SearchScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  // Relevance helpers to rank results client-side
+  const normalize = (s) => stripHtmlAndDecodeEntities(String(s || '')).toLowerCase().trim();
+  const scoreText = (text, q) => {
+    const t = normalize(text);
+    const query = normalize(q);
+    if (!query) return 0;
+    if (t === query) return 100;
+    if (t.startsWith(query)) return 90;
+    if (t.includes(query)) return 70;
+    return 0;
+  };
+  const scorePerson = (p, q) => (
+    5 * scoreText(p?.label, q) +
+    2 * scoreText(p?.shortBio, q) +
+    1 * scoreText(p?.description, q)
+  );
+  const scoreShow = (s, q) => (
+    5 * scoreText(s?.label, q) +
+    1 * scoreText(s?.description, q)
+  );
+  const scoreEpisode = (e, q) => (
+    5 * scoreText(e?.label, q) +
+    2 * scoreText(e?.teaser, q) +
+    1 * scoreText(e?.description, q)
+  );
+
   const handleSearch = async (query) => {
     if (!query.trim()) {
       setSearchResults({ shows: [], episodes: [], people: [] });
@@ -36,6 +62,8 @@ const SearchScreen = ({ navigation }) => {
     setSearchQuery(query);
     setLoading(true);
     setError(null);
+    // Clear current results to avoid perceiving stale duplicates while loading
+    setSearchResults({ shows: [], episodes: [], people: [] });
 
     try {
       // Build more comprehensive search params
@@ -83,7 +111,7 @@ const SearchScreen = ({ navigation }) => {
       });
 
       // Wait for all requests to complete
-      const [shows, episodes, people] = await Promise.all([
+      let [shows, episodes, people] = await Promise.all([
         showsPromise,
         episodesPromise,
         peoplePromise
@@ -91,11 +119,95 @@ const SearchScreen = ({ navigation }) => {
 
       console.log(`Search results - Shows: ${shows?.length || 0}, Episodes: ${episodes?.length || 0}, People: ${people?.length || 0}`);
 
-      setSearchResults({
-        shows: shows || [],
-        episodes: episodes || [],
-        people: people || []
+      // Apply local filtering as a safety net in case backend ignores filters
+      const matchesQuery = (text) => normalize(text).includes(normalize(query));
+      const filterPeople = (arr) => (arr || []).filter(p => (
+        matchesQuery(p?.label) || matchesQuery(p?.shortBio) || matchesQuery(p?.description)
+      ));
+      const filterShows = (arr) => (arr || []).filter(s => (
+        matchesQuery(s?.label) || matchesQuery(s?.description)
+      ));
+      const filterEpisodes = (arr) => (arr || []).filter(e => (
+        matchesQuery(e?.label) || matchesQuery(e?.teaser) || matchesQuery(e?.description)
+      ));
+
+      let peopleFiltered = filterPeople(people);
+      let showsFiltered = filterShows(shows);
+      let episodesFiltered = filterEpisodes(episodes);
+
+      // Fallback: if a category has no matches, perform a simpler, larger search for that category
+      if (peopleFiltered.length === 0) {
+        try {
+          const altPeople = await apiService.getPeople({
+            'filter[label][operator]': 'CONTAINS',
+            'filter[label][value]': query,
+            'limit': 50
+          });
+          peopleFiltered = filterPeople(altPeople);
+          if (!peopleFiltered.length) peopleFiltered = altPeople || [];
+        } catch (e) { /* ignore */ }
+      }
+      if (showsFiltered.length === 0) {
+        try {
+          const altShows = await apiService.getShows({
+            'filter[label][operator]': 'CONTAINS',
+            'filter[label][value]': query,
+            'limit': 30
+          });
+          showsFiltered = filterShows(altShows);
+          if (!showsFiltered.length) showsFiltered = altShows || [];
+        } catch (e) { /* ignore */ }
+      }
+      if (episodesFiltered.length === 0) {
+        try {
+          const altEpisodes = await apiService.getEpisodes({
+            'filter[label][operator]': 'CONTAINS',
+            'filter[label][value]': query,
+            'limit': 30,
+            'embed': 'shows'
+          });
+          episodesFiltered = filterEpisodes(altEpisodes);
+          if (!episodesFiltered.length) episodesFiltered = altEpisodes || [];
+        } catch (e) { /* ignore */ }
+      }
+
+      // If filtering produced empty arrays, fall back to originals to avoid blank screens
+      const peopleBase = peopleFiltered.length ? peopleFiltered : (people || []);
+      const showsBase = showsFiltered.length ? showsFiltered : (shows || []);
+      const episodesBase = episodesFiltered.length ? episodesFiltered : (episodes || []);
+
+      // Sort by relevance so exact/prefix matches rank first (e.g., "Amy Webb")
+      const sortedPeople = [...peopleBase].sort((a, b) => {
+        const diff = scorePerson(b, query) - scorePerson(a, query);
+        if (diff !== 0) return diff;
+        return normalize(a?.label).localeCompare(normalize(b?.label));
       });
+      const sortedShows = [...showsBase].sort((a, b) => {
+        const diff = scoreShow(b, query) - scoreShow(a, query);
+        if (diff !== 0) return diff;
+        return normalize(a?.label).localeCompare(normalize(b?.label));
+      });
+      const sortedEpisodes = [...episodesBase].sort((a, b) => {
+        const diff = scoreEpisode(b, query) - scoreEpisode(a, query);
+        if (diff !== 0) return diff;
+        return normalize(a?.label).localeCompare(normalize(b?.label));
+      });
+
+      setSearchResults({
+        shows: sortedShows,
+        episodes: sortedEpisodes,
+        people: sortedPeople
+      });
+
+      // Choose best tab based on highest top relevance score; prefer People on ties
+      const topPerson = sortedPeople[0] ? scorePerson(sortedPeople[0], query) : -1;
+      const topShow = sortedShows[0] ? scoreShow(sortedShows[0], query) : -1;
+      const topEpisode = sortedEpisodes[0] ? scoreEpisode(sortedEpisodes[0], query) : -1;
+      let bestTab = 'shows';
+      if (topPerson >= topShow && topPerson >= topEpisode && sortedPeople.length) bestTab = 'people';
+      else if (topShow >= topEpisode && sortedShows.length) bestTab = 'shows';
+      else if (sortedEpisodes.length) bestTab = 'episodes';
+      setActiveTab(bestTab);
     } catch (err) {
       setError('Failed to search. Please try again.');
       console.error('Error searching:', err);
