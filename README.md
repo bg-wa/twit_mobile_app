@@ -9,7 +9,7 @@ The TWiT Mobile App allows users to:
 - Browse TWiT shows and episodes
 - Watch video or listen to audio episodes
 - View detailed information about hosts and guests
-- Watch live streams
+- View the live show schedule
 - Search for content
 - Manage app settings and preferences
 
@@ -115,7 +115,7 @@ The TWiT Mobile App allows users to:
 │   │   ├── SearchScreen.js     # Content search 
 │   │   ├── SettingsScreen.js   # App configuration
 │   │   ├── ShowDetailScreen.js # Show episodes and info
-│   │   └── StreamsScreen.js    # Live streams
+│   │   └── ScheduleScreen.js   # Google Calendar schedule (Agenda view)
 │   │
 │   ├── /services               # API and backend services
 │   │   ├── api.js              # TWiT API client
@@ -139,6 +139,25 @@ The TWiT Mobile App allows users to:
 - When offline, the app will prefer cached data and may serve stale entries; otherwise an error is shown.
 - You can manually clear all API cache from the Diagnostic screen (`src/components/DiagnosticScreen.js`) using the "Clear API Cache" button.
 
+### Cache size guard and low-storage recovery
+- Large payloads (> ~500KB serialized) are skipped from caching to avoid SQLite quota issues.
+- If a cache write fails with `SQLITE_FULL` (database or disk full), the app attempts a best-effort cache cleanup to recover space.
+- This logic lives in `src/utils/cacheManager.js` and is used transparently by `requestWithCache()` in `src/services/api.js`.
+
+## Schedule
+
+- The Streams tab has been replaced with a Schedule tab that embeds the official TWiT Google Calendar.
+- Implemented with `react-native-webview` in `src/screens/ScheduleScreen.js`.
+- Defaults to the compact Agenda view with minimal chrome; scrollbars are hidden for a cleaner look.
+- Calendar source: https://twit.tv/schedule
+
+## Pagination and Pull-to-Refresh
+
+- Infinite scrolling and pull-to-refresh are implemented on:
+  - `src/screens/ShowDetailScreen.js` (episodes list)
+  - `src/screens/PeopleScreen.js` (people directory)
+- Pagination uses `page` and `range` params and appends results as you scroll. Refresh resets to page 1.
+
 ## Troubleshooting
 
 ### White screen / splash screen stuck
@@ -158,6 +177,10 @@ The TWiT Mobile App allows users to:
 - Check network connectivity
 - Verify API credentials in src/config/credentials.js
 - Use the Diagnostic tab to test API connectivity
+
+### Calendar/WebView issues
+- If the Schedule tab fails to load, use the Retry button or pull-to-refresh on Android.
+- On very constrained networks, Google Calendar may block third-party cookies/scripts; reopening the tab often resolves it.
 
 ## License
 
