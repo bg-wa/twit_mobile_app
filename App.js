@@ -16,7 +16,7 @@ global.Platform = Platform;
 import HomeScreen from './src/screens/HomeScreen';
 import ShowDetailScreen from './src/screens/ShowDetailScreen';
 import EpisodeDetailScreen from './src/screens/EpisodeDetailScreen';
-import StreamsScreen from './src/screens/StreamsScreen';
+import ScheduleScreen from './src/screens/ScheduleScreen';
 import SearchScreen from './src/screens/SearchScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import PeopleScreen from './src/screens/PeopleScreen';
@@ -105,7 +105,7 @@ const ShowsStack = () => (
   </Stack.Navigator>
 );
 
-const StreamsStack = () => (
+const ScheduleStack = () => (
   <Stack.Navigator
     screenOptions={{
       headerStyle: {
@@ -118,10 +118,10 @@ const StreamsStack = () => (
     }}
   >
     <Stack.Screen 
-      name="StreamsList" 
-      component={StreamsScreen} 
+      name="ScheduleView" 
+      component={ScheduleScreen} 
       options={{ 
-        title: 'Live Streams',
+        title: 'Schedule',
         headerLeft: () => <AppIcon size={30} showText={false} style={{ marginLeft: 15, marginRight: 10 }} />
       }} 
     />
@@ -262,8 +262,8 @@ const TabNavigator = () => {
 
           if (route.name === 'Shows') {
             iconName = focused ? 'tv' : 'tv-outline';
-          } else if (route.name === 'Streams') {
-            iconName = focused ? 'radio' : 'radio-outline';
+          } else if (route.name === 'Schedule') {
+            iconName = focused ? 'calendar' : 'calendar-outline';
           } else if (route.name === 'People') {
             iconName = focused ? 'people' : 'people-outline';
           } else if (route.name === 'Search') {
@@ -294,8 +294,8 @@ const TabNavigator = () => {
         options={{ headerShown: false }}
       />
       <Tab.Screen 
-        name="Streams" 
-        component={StreamsStack} 
+        name="Schedule" 
+        component={ScheduleStack} 
         options={{ headerShown: false }}
       />
       <Tab.Screen 
@@ -329,7 +329,7 @@ const App = () => {
         // Log available screens and components
         console.log('HomeScreen available:', !!HomeScreen);
         console.log('ShowDetailScreen available:', !!ShowDetailScreen);
-        console.log('StreamsScreen available:', !!StreamsScreen);
+        console.log('ScheduleScreen available:', !!ScheduleScreen);
         console.log('SearchScreen available:', !!SearchScreen);
         console.log('SettingsScreen available:', !!SettingsScreen);
         console.log('NetworkStatusBar available:', !!NetworkStatusBar);

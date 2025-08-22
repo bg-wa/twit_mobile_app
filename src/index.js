@@ -11,7 +11,7 @@ export { default as NetworkStatusBar } from './components/NetworkStatusBar';
 export { default as HomeScreen } from './screens/HomeScreen';
 export { default as ShowDetailScreen } from './screens/ShowDetailScreen';
 export { default as EpisodeDetailScreen } from './screens/EpisodeDetailScreen';
-export { default as StreamsScreen } from './screens/StreamsScreen';
+export { default as ScheduleScreen } from './screens/ScheduleScreen';
 export { default as SearchScreen } from './screens/SearchScreen';
 export { default as SettingsScreen } from './screens/SettingsScreen';
 
